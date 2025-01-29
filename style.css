@@ -77,31 +77,6 @@ html {
 
 #hand-op .card { position : absolute; }
 
-/* ----------- media player ------------------ */
-
-#youtube {
-	position: fixed;
-	height: 10px;
-	width: 10px;
-	display: hidden;
-	z-index: -100;
-}
-
-#toggle-music {
-	position: absolute;
-    top: 45.6vw;
-    left: 26vw;
-    width: 2vw;
-    height: 3vw;
-    font-size: 3vw;
-	color: goldenrod;
-    text-shadow: 0 0 2vw black;
-	z-index: 86;
-}
-.music-customization { 
-	transform: translate(22.5vw, -0.5vw);
-}	
-
 /* ----------- notification bar ------------------ */
 
 #notification-bar {

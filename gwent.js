@@ -2,6 +2,23 @@
 
 class Controller {}
 
+// Websocket and server config
+const socket = new WebSocket('ws://localhost:8080');
+
+socket.onopen = () => {
+    console.log('Connected to the server');
+};
+
+socket.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+		console.log("mensagem do servidor:")
+		console.log(data)
+};
+
+socket.onclose = () => {
+    console.log('Disconnected from the server');
+};
+
 // Makes decisions for the AI opponent player
 class ControllerAI {
 	constructor(player) {
@@ -496,6 +513,9 @@ class Player {
 		if (this.passed ^ hasPassed)
 			document.getElementById("passed-" + this.tag).classList.toggle("passed");
 		this.passed = hasPassed;
+		if (hasPassed) {
+			socket.send(JSON.stringify({ type: 'pass', player: this.id }));
+	}
 	}
 	
 	// Sets up board for turn
@@ -747,7 +767,7 @@ class CardContainer {
 		this.elem.classList.add("row-selectable");
 	}
 	
-	// Disallows teh row to be clicked
+	// Disallows the row to be clicked
 	clearSelectable() {
 		this.elem.classList.remove("row-selectable");
 		for (card in this.cards)
@@ -1315,7 +1335,6 @@ class Game {
 	
 	// Sets initializes player abilities, player hands and redraw
 	async startGame() {
-		ui.toggleMusic_elem.classList.remove("music-customization");
 		this.initPlayers(player_me, player_op);
 		await Promise.all([...Array(10).keys()].map( async () => {
 			await player_me.deck.draw(player_me.hand);
@@ -1323,6 +1342,7 @@ class Game {
 		}));
 		
 		await this.runEffects(this.gameStart);
+		socket.send(JSON.stringify({ type: 'Game start' }));
 		if (!this.firstPlayer)
 			this.firstPlayer = await this.coinToss();
 		this.initialRedraw();
@@ -1332,6 +1352,8 @@ class Game {
 	async coinToss(){
 		this.firstPlayer = (Math.random() < 0.5) ? player_me : player_op;
 		await ui.notification(this.firstPlayer.tag + "-coin", 1200);
+		
+		socket.send(JSON.stringify({ type: 'coinToss', player: this.firstPlayer.id }));
 		return this.firstPlayer;
 	}
 	
@@ -1340,7 +1362,7 @@ class Game {
 		for (let i=0; i< 2; i++)
 			player_op.controller.redraw();
 		await ui.queueCarousel(player_me.hand, 2, async (c, i) => await player_me.deck.swap(c, c.removeCard(i)), c => true, true, true, "Choose up to 2 cards to redraw.");
-		ui.enablePlayer(false);
+		socket.send(JSON.stringify({ type: 'Game ready' }));
 		game.startRound();
 	}
 	
@@ -1370,19 +1392,18 @@ class Game {
 	
 	// Starts a new turn. Enables client interraction in client's turn.
 	async startTurn() {
+		socket.send(JSON.stringify({ type: 'Turn Start', player: this.currPlayer.id }));
 		await this.runEffects(this.turnStart);
 		if (!this.currPlayer.opponent().passed){
 			this.currPlayer = this.currPlayer.opponent();
 			await ui.notification(this.currPlayer.tag + "-turn", 1200);
 		}
-		ui.enablePlayer(this.currPlayer === player_me);
 		this.currPlayer.startTurn();
 	}
 	
 	// Ends the current turn and may end round. Disables client interraction in client's turn.
 	async endTurn() {
 		if (this.currPlayer === player_me)
-			ui.enablePlayer(false);
 		await this.runEffects(this.turnEnd);
 		if (this.currPlayer.passed)
 			await ui.notification(this.currPlayer.tag + "-pass", 1200);
@@ -1451,7 +1472,6 @@ class Game {
 		}
 		
 		fadeIn(endScreen, 300);
-		ui.enablePlayer(true);
 	}
 	
 	// Returns the client to the deck customization screen
@@ -1484,7 +1504,7 @@ class Game {
 	
 }
 
-// Contians information and behavior of a Card
+// Contains information and behavior of a Card
 class Card {
 
 	constructor(card_data, player) {
@@ -1689,64 +1709,8 @@ class UI {
 		this.lastRow = null;
 		document.getElementById("pass-button").addEventListener("click", () => player_me.passRound(), false);
 		document.getElementById("click-background").addEventListener("click", () => ui.cancel(), false);
-		this.youtube;
-		this.ytActive;
-		this.toggleMusic_elem = document.getElementById("toggle-music");
-		this.toggleMusic_elem.classList.add("fade");
-		this.toggleMusic_elem.addEventListener("click", () => this.toggleMusic(), false);
 	}
 	
-	// Enables or disables client interration
-	enablePlayer(enable){
-		let main = document.getElementsByTagName("main")[0].classList;
-		if (enable) main.remove("noclick"); else main.add("noclick");
-	}
-	
-	// Initializes the youtube background music object
-	initYouTube(){
-		this.youtube = new YT.Player('youtube', {
-			videoId: "UE9fPWy1_o4",
-			playerVars:  { "autoplay" : 1, "controls" : 0, "loop" : 1, "playlist" : "UE9fPWy1_o4", "rel" : 0, "version" : 3, "modestbranding" : 1 },
-			events: { 'onStateChange': initButton }
-		});
-		
-		function initButton(){
-			if (ui.ytActive !== undefined)
-				return;
-			ui.ytActive = true;
-			ui.youtube.playVideo();
-			let timer = setInterval( () => {
-				if (ui.youtube.getPlayerState() !== YT.PlayerState.PLAYING)
-					ui.youtube.playVideo();
-				else {
-					clearInterval(timer);
-					ui.toggleMusic_elem.classList.remove("fade");
-				}
-			}, 500);
-		}
-	}
-	
-	// Called when client toggles the music
-	toggleMusic(){
-		if (this.youtube.getPlayerState() !== YT.PlayerState.PLAYING) {
-			this.youtube.playVideo();
-			this.toggleMusic_elem.classList.remove("fade");
-		} else {
-			this.youtube.pauseVideo();
-			this.toggleMusic_elem.classList.add("fade");
-		}
-	}
-	
-	// Enables or disables backgorund music 
-	setYouTubeEnabled(enable){
-		if (this.ytActive === enable)
-			return;
-		if (enable && !this.mute)
-			ui.youtube.playVideo();
-		else
-			ui.youtube.pauseVideo();
-		this.ytActive = enable;
-}
 	
 	// Called when the player selects a selectable card
 	async selectCard(card) {
@@ -1758,8 +1722,9 @@ class UI {
 			this.setSelectable(null, false);
 			this.showPreview(card);
 		} else if (pCard.name === "Decoy") {
+			const nomeColuna = this.lastRow.elem_parent.id	
+			socket.send(JSON.stringify({ type: 'recover', player: 'teste', card: card.filename, row: nomeColuna}));
 			this.hidePreview(card);
-			this.enablePlayer(false);
 			board.toHand(card, row);
 			await board.moveTo(pCard, row, pCard.holder.hand);
 			pCard.holder.endTurn();
@@ -1767,18 +1732,24 @@ class UI {
 	}
 	
 	// Called when the player selects a selectable CardContainer
+	// LEO - aqui de fato coloca a carta na coluna.
 	async selectRow(row){
 		this.lastRow = row;
+
 		if (this.previewCard === null) {
 			await ui.viewCardsInContainer(row);
 			return;
 		}
+		const nomeColuna = this.lastRow.elem_parent.id
+		console.log(this.previewCard);
+		socket.send(JSON.stringify({ type: 'play', player: 'teste', card: this.previewCard.filename, row: nomeColuna}));
+
 		if (this.previewCard.name === "Decoy")
 			return;
+
 		let card = this.previewCard;
 		let holder = card.holder;
 		this.hidePreview();
-		this.enablePlayer(false);
 		if (card.name === "Scorch"){
 			this.hidePreview();
 			await ability_dict["scorch"].activated(card);
@@ -1869,7 +1840,7 @@ class UI {
 	
 	// Displays a cancellable Carousel for all cards in a container
 	async viewCardsInContainer(container, action) {
-		action = action ? action : function() {return this.cancel();};
+		action = action ? action : function() { return this.cancel();};
 		await this.queueCarousel(container, 1, action, () => true, false, true);
 	}
 	
@@ -2039,7 +2010,6 @@ class Carousel {
 		}
 		
 		this.elem.classList.remove("hide");
-		ui.enablePlayer(true);
 	}
 	
 	// Called by the client to cycle cards displayed by n
@@ -2056,7 +2026,6 @@ class Carousel {
 		if (this.isLastSelection())
 			this.elem.classList.add("hide");
 		if (this.count <= 0)
-			ui.enablePlayer(false);
 		await this.action(this.container, this.indices[this.index]);
 		if (this.isLastSelection() && !this.cancelled)
 			return this.exit();
@@ -2069,7 +2038,6 @@ class Carousel {
 			this.cancelled = true;
 			this.exit();
 		}
-		ui.enablePlayer(true);
 	}
 	
 	// Returns true if there are no more cards to view or select
@@ -2133,7 +2101,6 @@ class Popup {
 		
 		this.elem.classList.remove("hide");
 		Popup.setCurrent(this);
-		ui.enablePlayer(true);
 	}
 	
 	// Sets this as the current popup window
@@ -2158,7 +2125,6 @@ class Popup {
 	
 	// Clears the popup and diables player interraction
 	clear() {
-		ui.enablePlayer(false);
 		this.elem.classList.add("hide");
 		Popup.clearCurrent();
 	}
@@ -2664,11 +2630,6 @@ function sleepUntil(predicate, ms) {
 	});
 }
 
-// Initializes the interractive YouTube object
-function onYouTubeIframeAPIReady() {
-	ui.initYouTube();
-}
-
 /*----------------------------------------------------*/
 
 var ui = new UI();
@@ -2677,5 +2638,4 @@ var weather = new Weather();
 var game = new Game();
 var player_me, player_op;
 
-ui.enablePlayer(false);
 let dm = new DeckMaker();

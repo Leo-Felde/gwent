@@ -89,19 +89,19 @@
 	
 	<section id="panel-mid" class="panel">
 		<section id="field-op" class="field">
-			<div class="field-row">
+			<div class="field-row" id="target-siege">
 				<div class="row-score center">12</div>
 				<div class="row-special card-container"></div>
 				<div class="row-cards card-container"></div>
 				<div class="row-weather"></div>
 			</div>
-			<div class="field-row">
+			<div class="field-row" id="target-ranged">
 				<div class="row-score center">0</div>
 				<div class="row-special card-container"></div>
 				<div class="row-cards card-container"></div>
 				<div class="row-weather"></div>
 			</div>
-			<div class="field-row">
+			<div class="field-row" id="target-melee">
 				<div class="row-score center">0</div>
 				<div class="row-special card-container"></div>
 				<div class="row-cards card-container"></div>
@@ -110,19 +110,19 @@
 		</section>
 		
 		<section id="field-me" class="field">
-			<div class="field-row">
+			<div class="field-row" id="self-melee">
 				<div class="row-score center">0</div>
 				<div class="row-special card-container"></div>
 				<div class="row-cards card-container"></div>
 				<div class="row-weather"></div>
 			</div>
-			<div class="field-row">
+			<div class="field-row" id="self-ranged">
 				<div class="row-score center">0</div>
 				<div class="row-special card-container"></div>
 				<div class="row-cards card-container"></div>
 				<div class="row-weather"></div>
 			</div>
-			<div class="field-row">
+			<div class="field-row" id="self-siege">
 				<div class="row-score center">0</div>
 				<div class="row-special card-container"></div>
 				<div class="row-cards card-container"></div>
@@ -274,8 +274,6 @@
 	</div>
 	<button id="start-game">Start game</button>
 </section>
-
-<div id="toggle-music" class="center music-customization">♫</div>
 
 <script type="text/javascript" src="cards.js"></script>
 <script type="text/javascript" src="decks.js"></script>
