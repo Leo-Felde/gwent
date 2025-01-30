@@ -2,444 +2,102 @@
 
 class Controller {}
 
-// Websocket and server config
+// Websocket and Server config
 const socket = new WebSocket('ws://localhost:8080');
+let amReady = false;
+let oponentReady = false;
+let playerId = null;
 
 socket.onopen = () => {
     console.log('Connected to the server');
 };
 
-socket.onmessage = (event) => {
+socket.onmessage = async(event) => {
     const data = JSON.parse(event.data);
-		console.log("mensagem do servidor:")
-		console.log(data)
+
+		switch (data.type) {
+			case "welcome":
+				playerId = data.player;
+				console.log("Bem vindo. Seu id é ", playerId);
+				break;
+			
+			// Adversário está pronto
+			case "ready":
+				console.log("Adversário está pronto")
+				if (amReady) {
+					player_op = new Player(1, `Player ${playerId > 1 ? '1' : '2'}`, data.deck);
+					document.getElementById("deck-customization").classList.add("hide");
+		
+					game.startGame();
+					return
+				} else {
+					document.getElementById("oponent-ready").classList.remove("hide");
+					player_op = new Player(1, `Player ${playerId > 1 ? '1' : '2'}`, data.deck);
+					oponentReady = true;
+				}
+				break;
+			
+			// Pré-partida, carrega as cartas do adversário
+			case "initial_reDraw":
+				console.log("Pré-partida, carrega as cartas do adversário")
+				console.log(data.cards)
+				for (let i = 0; i < data.cards.length; i++) {
+					const cardFromDict = card_dict.find(dict => dict.filename === data.cards[i].filename);
+					data.cards[i] = new Card(cardFromDict, player_op);
+				};
+				player_op.hand.cards = data.cards;
+				break;
+
+			// Inicio da partida, define quem vai primeiro
+			case 'coinToss':
+				console.log("Inicio da partida, Jogador " + data.player + " jogará primeiro");
+				const player = data.player === playerId ? player_me : player_op;
+				game.firstPlayer = player;
+				game.currPlayer = player;
+				game.startTurn();
+				ui.notification(game.firstPlayer.tag + "-coin", 1200);
+
+				break;
+
+			// Adversário jogou uma carta
+			case "play":
+				console.log("Adversário jogou uma carta");
+				const card = player_op.hand.cards.filter(c => c.filename === data.card.filename)[0];
+	
+				const rowData = data.row.split('-');
+				const target = rowData[0] === "self" ? "target" : "self";
+				const row = board.row.filter(r => r.elem_parent.id === `${target}-${rowData[1]}`)[0];
+				console.log(card)
+				player_op.playCardToRow(card, row);
+				break;
+
+			// Adversário passou o turno
+			case "pass":
+				console.log("Adversário passou");
+				// player_op.passRound();
+				break;
+		}
 };
 
 socket.onclose = () => {
     console.log('Disconnected from the server');
 };
 
-// Makes decisions for the AI opponent player
-class ControllerAI {
-	constructor(player) {
-		this.player = player;
-	}
-	
-	// Collects data and weighs options before taking a weighted random action
-	async startTurn(player){
-		if (player.opponent().passed && (player.winning || 
-				player.deck.faction === "nilfgaard" && player.total === player.opponent().total) ){
-			await player.passRound();
-			return;
-		}
-		let data_max = this.getMaximums();
-		let data_board = this.getBoardData();
-		let weights = player.hand.cards.map(c => 
-			({weight: this.weightCard(c, data_max, data_board), action: async () => await this.playCard(c, data_max, data_board)}) );
-		if (player.leaderAvailable)
-			weights.push( {weight: this.weightLeader(player.leader, data_max, data_board), action: async () => await player.activateLeader()} );
-		weights.push( {weight: this.weightPass(), action: async () => await player.passRound()} );
-		let weightTotal = weights.reduce( (a,c) => a + c.weight, 0);
-		if (weightTotal === 0){
-			for (let i=0; i<player.hand.cards.length; ++i) {
-				let card = player.hand.cards[i];
-				if (card.row === "weather" && this.weightWeather(card) > -1 || card.abilities.includes("avenger")) {
-					await weights[i].action();
+async function waitForOpponent() {
+	while (true) {
+			if (opponentAvailable) {
 					return;
-				}
 			}
-			await player.passRound();
-		} else {
-			let rand = randomInt(weightTotal);
-			for (var i=0; i < weights.length; ++i) {
-				rand -= weights[i].weight;
-				if (rand < 0)
-					break;
-			}
-			await weights[i].action();
-		}
+			await new Promise(resolve => setTimeout(resolve, 5000)); // Wait for 5 seconds before checking again
 	}
-	
-	// Collects data about card with the hightest power on the board
-	getMaximums(){
-		let rmax = board.row.map(r =>  ({row: r, cards: r.cards.filter(c => c.isUnit()).reduce( (a,c) => 
-			(!a.length|| a[0].power < c.power) ? [c] : a[0].power === c.power ? a.concat([c]) : a
-		, []) }) );
-		
-		let max = rmax.filter((r,i) => r.cards.length && i < 3).reduce((a,r) => Math.max(a, r.cards[0].power), 0);
-		let max_me = rmax.filter((r,i) => i < 3 && r.cards.length && r.cards[0].power === max).reduce((a,r) => 
-			a.concat(r.cards.map(c => ({row:r, card:c})))
-		, []);
-		
-		max = rmax.filter((r,i) => r.cards.length && i > 2).reduce((a,r) => Math.max(a, r.cards[0].power), 0);
-		let max_op = rmax.filter((r,i) => i > 2 && r.cards.length && r.cards[0].power === max).reduce((a,r) => 
-			a.concat(r.cards.map(c => ({row:r, card:c})))
-		, []);
-		
-		return {rmax: rmax, me: max_me, op: max_op};
-	}
-	
-	// Collects data about the types of cards on the board and in each player's graves
-	getBoardData(){
-		let data = this.countCards(new CardContainer());
-		Object.keys([0,1,2]).map(i => board.row[i]).forEach(r => this.countCards(r, data));
-		data.grave_me = this.countCards(this.player.grave);
-		data.grave_op = this.countCards(this.player.opponent().grave);
-		return data;
-	}
-	
-	// Catalogs the kinds of cards in a given CardContainer
-	countCards(container, data){
-		data = data ? data : {spy: [], medic: [], bond: {}, scorch: []};
-		container.cards.filter(c => c.isUnit()).forEach(c => {
-			for (let x of c.abilities) {
-				switch (x) {
-					case "spy":
-					case "medic":
-						data[x].push(c);
-						break;
-					case "scorch_r": case "scorch_c": case "scorch_s":
-						data["scorch"].push(c);
-						break;
-					case "bond":
-						if (!data.bond[c.name])
-							data.bond[c.name] = 0;
-						data.bond[c.name]++;
-				}
-			}
-		});
-		return data;
-	}
-	
-	// Swaps a card from the hand with the deck if beneficial
-	redraw() {
-		let card = this.discardOrder({holder:this.player}).shift();
-		if (card && card.power < 15) {
-			this.player.deck.swap(this.player.hand, this.player.hand.removeCard(card))
-		}
-	}
-	
-	// Orders discardable cards from most to least discardable
-	discardOrder(card) {
-		let cards = [];
-		let groups = {};
-		let musters = card.holder.hand.cards.filter(c => c.abilities.includes("muster"));
-		while (musters.length > 0) {
-			let curr = musters.pop();
-			let i = curr.name.indexOf('-');
-			let name = i === -1 ? curr.name : curr.name.substring(0, i).trim();
-			if (!groups[name])
-				groups[name] = [];
-			let group = groups[name];
-			group.push(curr);
-			for (let j=musters.length-1; j>=0; j--)
-				if (musters[j].name.startsWith(name))
-					group.push( musters.splice(j,1)[0] );
-		}
-		
-		for (let group of Object.values(groups)) {
-			group.sort(Card.compare);
-			group.pop();
-			cards.push(...group);
-		}
-		
-		let weathers = card.holder.hand.cards.filter(c => c.row === "weather");
-		if (weathers.length > 1){
-			weathers.splice(randomInt(weathers.length), 1);
-			cards.push(...weathers);
-		}
-		
-		let normal = card.holder.hand.cards.filter(c => c.abilities.length === 0);
-		normal.sort(Card.compare);
-		cards.push(...normal);
-		return cards;
-	}
-	
-	// Tells the Player that this object controls to play a card
-	async playCard(c, max, data){
-		if (c.name === "Commander's Horn")
-			await this.horn(c);
-		else if (c.name === "Mardroeme")
-			await this.mardroeme(c);
-		else if (c.name === "Decoy")
-			await this.decoy(c, max, data);
-		else if (c.name === "Scorch")
-			await this.scorch(c, max, data);
-		else
-			await this.player.playCard(c);
-	}
-	
-	// Plays a Commander's Horn to the most beneficial row. Assumes at least one viable row.
-	async horn(card){
-		let rows = [0,1,2].map(i => board.row[i]).filter(r => r.special === null);
-		let max_row;
-		let max = 0;
-		for (let i=0; i<rows.length; ++i) {
-			let r = rows[i];
-			let dif = [0, 0];
-			this.calcRowPower(r, dif, true);
-			r.effects.horn++;
-			this.calcRowPower(r, dif, false);
-			r.effects.horn--;
-			let score = dif[1] - dif[0];
-			if (max < score){
-				max = score;
-				max_row = r;
-			}
-		}
-		await this.player.playCardToRow(card, max_row);
-	}
-	
-	// Plays a Mardroeme to the most beneficial row. Assumes at least one viable row.
-	async mardroeme(card){ // TODO skellige
-		let row, max = 0;
-		for (let i=1; i<3; i++){
-			let curr = this.weightMardroemeRow(card, board.row[i]);
-			if (curr > max){
-				max = curr;
-				row = board.row[i];
-			}
-		}
-		await this.player.playCardToRow(card, row);
-	}
-	
-	// Selects a card to remove from a Grave. Assumes at least one valid card.
-	medic(card, grave){
-		let data = this.countCards(grave);
-		let targ;
-		if (data.spy.length){
-			let min = data.spy.reduce( (a,c) => Math.min(a, c.power), Number.MAX_VALUE);
-			targ = data.spy.filter(c => c.power === min)[0];
-		} else if (data.medic.length) {
-			let max = data.medic.reduce( (a,c) => Math.max(a, c.power), Number.MIN_VALUE);
-			targ = data.medic.filter(c => c.power === max)[0];
-		} else if (data.scorch.length) {
-			targ = data.scorch[randomInt(data.scorch.length)];
-		} else {
-			let units = grave.findCards(c => c.isUnit());
-			targ = units.reduce( (a,c) => a.power < c.power ? c : a, units[0] );
-		}
-		return targ;
-	}
-	
-	// Selects a card to return to the Hand and replaces it with a Decoy. Assumes at least one valid card.
-	async decoy(card, max, data) {
-		let targ, row;
-		if (data.spy.length){
-			let min = data.spy.reduce( (a,c) => Math.min(a, c.power), Number.MAX_VALUE);
-			targ = data.spy.filter(c => c.power === min)[0];
-		} else if (data.medic.length) {
-			targ = data.medic[randomInt(data.medic.length)];
-		} else if (data.scorch.length) {
-			targ = data.scorch[randomInt(data.scorch.length)];
-		} else {
-			let pairs = max.rmax.filter((r,i) => i<3 && r.cards.length).reduce((a,r) => 
-				r.cards.map(c => ({r:r.row, c:c})).concat(a)
-			, []);
-			let pair = pairs[randomInt(pairs.length)];
-			targ = pair.c;
-			row = pair.r;
-		}
-		
-		for (let i = 0; !row ; ++i){
-			if (board.row[i].cards.indexOf(targ) !== -1){
-				row = board.row[i];
-				break;
-			}
-		}
-		
-		setTimeout(() => board.toHand(targ, row), 1000);
-		await this.player.playCardToRow(card, row);
-	}
-	
-	// Tells the controlled Player to play the Scorch card
-	async scorch(card, max, data){
-		await this.player.playScorch(card);
-	}
-	
-	// Assigns a weight for how likely the conroller is to Pass the round
-	weightPass(){
-		if (this.player.health === 1)
-			return 0;
-		let dif = this.player.opponent().total - this.player.total;
-		if (dif > 30)
-			return 100;
-		if (dif < -30 && this.player.opponent().handsize - this.player.handsize > 2)
-			return 100;
-		return Math.floor(Math.abs(dif));
-	}
-	
-	// Assigns a weight for how likely the controller is to activate its leader ability
-	weightLeader(card, max, data) {
-		let w = ability_dict[card.abilities[0]].weight;
-		if (ability_dict[card.abilities[0]].weight) {
-			let score = w(card, this, max, data);
-			return score;
-		}
-		return 10 + (game.roundCount-1) * 15;
-	}
-	
-	// Assigns a weight for how likely the controller will use a scorch-row card
-	weightScorchRow(card, max, row_name) {
-		let index = 3 + (row_name==="close" ? 0 : row_name==="ranged" ? 1 : 2);
-		if (board.row[index].total < 10)
-			return 0;
-		let score = max.rmax[index].cards.reduce((a,c) => a + c.power, 0);
-		return score;
-	}
-	
-	// Calculates a weight for how likely the conroller will use horn on this row
-	weightHornRow(card, row){
-		return row.special !== null ? 0 : this.weightRowChange(card, row);
-	}
-	
-	// Calculates weight for playing a card on a given row, min 0
-	weightRowChange(card, row){
-		return Math.max(0, this.weightRowChangeTrue(card, row));
-	}
-	
-	// Calculates weight for playing a card on the given row
-	weightRowChangeTrue(card, row) {
-		let dif = [0,0];
-		this.calcRowPower(row, dif, true);
-		row.updateState(card, true);
-		this.calcRowPower(row, dif, false);
-		if (!card.isSpecial())
-			dif[0] -= row.calcCardScore(card);
-		row.updateState(card, false);
-		return dif[1] - dif[0];
-	}
-	
-	// Calculates the weight for playing a weather card
-	weightWeather(card) {
-		let rows;
-		if (card.name === "Clear Weather")
-			rows = Object.values(weather.types).filter(t => t.count > 0).flatMap(t => t.rows);
-		else
-			rows = Object.values(weather.types).filter(t => t.count === 0 && t.name === card.abilities[0]).flatMap(t => t.rows);
-		if (!rows.length)
-			return 1;
-		let dif = [0,0];
-		rows.forEach( r => {
-			let state = r.effects.weather;
-			this.calcRowPower(r, dif, true);
-			r.effects.weather = !state;
-			this.calcRowPower(r, dif, false);
-			r.effects.weather = state;
-		});
-		return dif[1] - dif[0];
-	}
-	
-	// Calculates the weight for playing a mardroeme card
-	weightMardroemeRow(card, row){
-		if (card.name === "Mardroeme" && row.special !== null)
-			return 0;
-		let ermion = card.holder.hand.cards.filter(c => c.name === "Ermion").length > 0;
-		if (ermion && card.name !== "Ermion" && row === board.row[1])
-			return 0;
-		let name = row === board.row[1] ? "Young Berserker" : "Berserker";
-		let n = row.cards.filter(c => c.name === name).length;
-		let weight = row === board.row[2] ? 10*n : 8*n*n - 2*n
-		return Math.max(1, weight);
-	}
-	
-	// Calculates the weight for cards with the medic ability
-	weightMedic(data, score, owner){
-		let units = owner.grave.findCards(c => c.isUnit());
-		let grave = data["grave_" + owner.opponent().tag];
-		return !units.length ? Math.min(1,score) : score + (grave.spy.length ? 50 : grave.medic.length ? 15 : grave.scorch.length  ? 10 : this.player.health === 1 ? 1 : 0);
-	}
-	
-	// Calculates the weight for cards with the berserker ability
-	weightBerserker(card, row, score){
-		if (card.holder.hand.cards.filter(c => c.abilities.includes("mardroeme")).length < 1 && !row.effects.mardroeme > 0)
-			return score;
-		score -= card.basePower;
-		if (card.row === "close")
-			score += 14;
-		else {
-			let n = 0;
-			if (!row.effects.mardroeme)
-				n = row.cards.filter(c => c.name === "Young Berserker").length;
-			else
-				n = row.cards.filter(c => "Transformed Young Vildkaarl").length;
-			score = 8*((n+1)*(n+1) - n*n) + n*score;
-		}
-		return Math.max(1, score);
-	}
-	
-	// Calculates the weight for a weather card if played from the deck
-	weightWeatherFromDeck(card, weather_id) {
-		if (card.holder.deck.findCard(c => c.abilities.includes(weather_id)) === undefined)
-			return 0;
-		return this.weightCard({abilities:[weather_id], row:"weather"});
-	}
-	
-	// Assigns a weights for how likely the controller with play a card from its hand
-	weightCard(card, max, data){
-		if (card.name === "Decoy")
-			return data.spy.length ? 50 : data.medic.length ? 15 : data.scorch.length  ? 10 : max.me.length ? 1 : 0;
-		if (card.name === "Commander's Horn") {
-			let rows = [0,1,2].map(i => board.row[i]).filter(r => r.special === null);
-			if (!rows.length)
-				return 0;
-			rows = rows.map(r => this.weightHornRow(card, r) );
-			return Math.max(...rows)/2;
-		}
-		
-		if (card.abilities) {
-			if (card.abilities.includes("scorch")) {
-				let power_op = max.op.length ? max.op[0].card.power : 0;
-				let power_me = max.me.length ? max.me[0].card.power : 0;
-				let total_op = power_op * max.op.length;
-				let total_me = power_me * max.me.length;
-				return power_me > power_op ? 0 : power_me < power_op ? total_op : Math.max(0, total_op - total_me);
-			}
-			if (card.abilities.includes("decoy")) {
-				return data.spy.length ? 50 : data.medic.length ? 15 : data.scorch.length  ? 10 : max.me.length ? 1 : 0;
-			}
-			if (card.abilities.includes("mardroeme")) {
-				let rows = [1,2].map(i => board.row[i]);
-				return Math.max(...rows.map(r => this.weightMardroemeRow(card, r)) );
-			}
-		}
-		
-		if (card.row === "weather") {
-			return Math.max(0, this.weightWeather(card));
-		}
-		
-		let row = board.getRow(card, card.row === "agile" ? "close" : card.row, this.player);
-		let score = row.calcCardScore(card);
-		switch(card.abilities[card.abilities.length -1]) {
-			case "bond": 
-			case "morale":
-			case "horn":
-				score = this.weightRowChange(card, row); break;
-			case "medic": 
-				score = this.weightMedic(data, score, card.holder);	break;
-			case "spy": score = 15 + score; break;
-			case "muster": score *= 3; break;
-			case "scorch_c":
-				score = Math.max(1, this.weightScorchRow(card, max, "close")); break;
-			case "scorch_r": 
-				score = Math.max(1, this.weightScorchRow(card, max, "ranged")); break;
-			case "scorch_s":
-				score = Math.max(1, this.weightScorchRow(card, max, "siege")); break;
-			case "berserker":
-				score = this.weightBerserker(card, row, score); break;
-			case "avenger": case "avenger_kambi":
-				return score + ability_dict[card.abilities[card.abilities.length -1]].weight();
-		}
-		
-		return score;
-	}
-	
-	// Calculates the current power of a row associated with each Player
-	calcRowPower(r, dif, add){
-		r.findCards(c => c.isUnit()).forEach(c => {
-			let p = r.calcCardScore(c); 
-			c.holder === this.player ? (dif[0]+= add ? p : -p) : (dif[1]+= add ? p : -p);
-		});
+}
+
+// Oponent Controller
+class ControllerOponent {
+	constructor(player) {
+		player.tag = "op";
+
+		this.player = player;
 	}
 }
 
@@ -447,10 +105,10 @@ class ControllerAI {
 class Player {
 	constructor(id, name, deck) {
 		this.id = id;
-		this.tag = (id === 0) ? "me" : "op";
-		this.controller = (id === 0) ? new Controller() : new ControllerAI(this);
+		this.tag = "me";
+		this.controller = (id === 0) ? new Controller() : new ControllerOponent(this);
 		
-		this.hand = (id === 0) ? new Hand(document.getElementById("hand-row")) : new HandAI();
+		this.hand = (id === 0) ? new Hand(document.getElementById("hand-row")) : new HandOponent();
 		this.grave =  new Grave( document.getElementById("grave-" + this.tag));
 		this.deck = new Deck(deck.faction, document.getElementById("deck-" + this.tag));
 		this.deck_data = deck;
@@ -513,9 +171,6 @@ class Player {
 		if (this.passed ^ hasPassed)
 			document.getElementById("passed-" + this.tag).classList.toggle("passed");
 		this.passed = hasPassed;
-		if (hasPassed) {
-			socket.send(JSON.stringify({ type: 'pass', player: this.id }));
-	}
 	}
 	
 	// Sets up board for turn
@@ -527,16 +182,13 @@ class Player {
 		if (this === player_me) {
 			document.getElementById("pass-button").classList.remove("noclick");
 		}
-		
-		if (this.controller instanceof ControllerAI) {
-			await this.controller.startTurn(this);
-		}
 	}
 	
 	// Passes the round and ends the turn
 	passRound(){
 		this.setPassed(true);
 		this.endTurn();
+		socket.send(JSON.stringify({ type: "pass", player: this.id }));
 	}
 	
 	// Plays a scorch card
@@ -860,10 +512,17 @@ class Deck extends CardContainer {
 	
 	// Sends the top card to the passed hand
 	async draw(hand){
-		if (hand === player_op.hand)
-			hand.addCard(this.removeCard(0));
-		else
-			await board.toHand(this.cards[0], this);
+		let drawnCard = null
+		if (hand === player_op.hand) {
+			drawnCard = this.removeCard(0)
+			hand.addCard(drawnCard);
+		} else {
+			drawnCard = this.cards[0];
+			await board.toHand(drawnCard, this);
+		}
+
+		// if (drawnCard !== null)
+			// socket.send(JSON.stringify({ type: "draw", player: "teste", card: drawnCard}));
 	}
 	
 	// Draws a card and sends it to the container before adding a card from the container back to the deck.
@@ -904,8 +563,8 @@ class Deck extends CardContainer {
 	}
 }
 
-// Hand used by computer AI. Has an offscreen HTML element for card transitions.
-class HandAI extends CardContainer {
+// Hand used by Oponent. Has an offscreen HTML element for card transitions.
+class HandOponent extends CardContainer {
 	constructor() {
 		super(undefined);
 		this.counter = document.getElementById("hand-count-op"); 
@@ -950,6 +609,8 @@ class Row extends CardContainer {
 	
 	// Override
 	async addCard(card) {
+		// console.log("addCard")
+		// console.log(card)
 		if (card.isSpecial()) {
 			this.special = card;
 			this.elem_special.appendChild(card.elem);
@@ -1335,6 +996,7 @@ class Game {
 	
 	// Sets initializes player abilities, player hands and redraw
 	async startGame() {
+		this.currPlayer = player_me;
 		this.initPlayers(player_me, player_op);
 		await Promise.all([...Array(10).keys()].map( async () => {
 			await player_me.deck.draw(player_me.hand);
@@ -1342,28 +1004,30 @@ class Game {
 		}));
 		
 		await this.runEffects(this.gameStart);
-		socket.send(JSON.stringify({ type: 'Game start' }));
-		if (!this.firstPlayer)
-			this.firstPlayer = await this.coinToss();
-		this.initialRedraw();
+		socket.send(JSON.stringify({ type: 'game start' }));
+
+		await this.initialRedraw();
+		await this.coinToss();
+		game.startRound();
 	}
 	
-	// Simulated coin toss to determine who starts game
-	async coinToss(){
-		this.firstPlayer = (Math.random() < 0.5) ? player_me : player_op;
-		await ui.notification(this.firstPlayer.tag + "-coin", 1200);
-		
-		socket.send(JSON.stringify({ type: 'coinToss', player: this.firstPlayer.id }));
-		return this.firstPlayer;
+	// Determines who starts first
+	async coinToss() {
+		return new Promise((resolve) => {
+			const handleMessage = (event) => {
+
+				if (event.data.type === 'coinToss')
+					resolve(true);
+			}
+			socket.addEventListener('message', handleMessage);
+		});
 	}
 	
 	// Allows the player to swap out up to two cards from their iniitial hand
 	async initialRedraw(){
-		for (let i=0; i< 2; i++)
-			player_op.controller.redraw();
 		await ui.queueCarousel(player_me.hand, 2, async (c, i) => await player_me.deck.swap(c, c.removeCard(i)), c => true, true, true, "Choose up to 2 cards to redraw.");
-		socket.send(JSON.stringify({ type: 'Game ready' }));
-		game.startRound();
+		ui.enablePlayer(false);
+		socket.send(JSON.stringify({ type: "initial_reDraw", cards: removeCircularReferences(player_me.hand.cards) }));
 	}
 	
 	// Initiates a new round of the game
@@ -1371,7 +1035,7 @@ class Game {
 		this.roundCount++;
 		this.currPlayer = (this.roundCount%2 === 0) ? this.firstPlayer : this.firstPlayer.opponent();
 		await this.runEffects(this.roundStart);
-		
+		console.log('round start the current player is ', this.currPlayer)
 		if ( !player_me.canPlay() )
 			player_me.setPassed(true);
 		if ( !player_op.canPlay() )
@@ -1392,18 +1056,20 @@ class Game {
 	
 	// Starts a new turn. Enables client interraction in client's turn.
 	async startTurn() {
-		socket.send(JSON.stringify({ type: 'Turn Start', player: this.currPlayer.id }));
 		await this.runEffects(this.turnStart);
 		if (!this.currPlayer.opponent().passed){
 			this.currPlayer = this.currPlayer.opponent();
 			await ui.notification(this.currPlayer.tag + "-turn", 1200);
 		}
+
+		ui.enablePlayer(this.currPlayer === player_me);
 		this.currPlayer.startTurn();
 	}
 	
 	// Ends the current turn and may end round. Disables client interraction in client's turn.
 	async endTurn() {
 		if (this.currPlayer === player_me)
+			ui.enablePlayer(false);
 		await this.runEffects(this.turnEnd);
 		if (this.currPlayer.passed)
 			await ui.notification(this.currPlayer.tag + "-pass", 1200);
@@ -1472,6 +1138,7 @@ class Game {
 		}
 		
 		fadeIn(endScreen, 300);
+		ui.enablePlayer(true);
 	}
 	
 	// Returns the client to the deck customization screen
@@ -1479,12 +1146,11 @@ class Game {
 		this.reset();
 		player_me.reset();
 		player_op.reset();
-		ui.toggleMusic_elem.classList.add("music-customization");
 		this.endScreen.classList.add("hide");
 		document.getElementById("deck-customization").classList.remove("hide");
 	}
 	
-	// Restarts the last game with the dame decks
+	// Restarts the last game with the same decks
 	restartGame(){
 		this.reset();
 		player_me.reset();
@@ -1711,6 +1377,10 @@ class UI {
 		document.getElementById("click-background").addEventListener("click", () => ui.cancel(), false);
 	}
 	
+	enablePlayer(enable){
+		let main = document.getElementsByTagName("main")[0].classList;
+		if (enable) main.remove("noclick"); else main.add("noclick");
+	}
 	
 	// Called when the player selects a selectable card
 	async selectCard(card) {
@@ -1723,8 +1393,10 @@ class UI {
 			this.showPreview(card);
 		} else if (pCard.name === "Decoy") {
 			const nomeColuna = this.lastRow.elem_parent.id	
-			socket.send(JSON.stringify({ type: 'recover', player: 'teste', card: card.filename, row: nomeColuna}));
+			const playedCard = removeCircularReferences(this.previewCard);
+			socket.send(JSON.stringify({ type: "recover", player: "teste", card: playedCard, row: nomeColuna}));
 			this.hidePreview(card);
+			this.enablePlayer(false);
 			board.toHand(card, row);
 			await board.moveTo(pCard, row, pCard.holder.hand);
 			pCard.holder.endTurn();
@@ -1733,23 +1405,26 @@ class UI {
 	
 	// Called when the player selects a selectable CardContainer
 	// LEO - aqui de fato coloca a carta na coluna.
-	async selectRow(row){
+	async selectRow(row, oponentCard = null){
 		this.lastRow = row;
 
-		if (this.previewCard === null) {
+		if (this.previewCard === null && oponentCard === null) {
 			await ui.viewCardsInContainer(row);
 			return;
 		}
 		const nomeColuna = this.lastRow.elem_parent.id
-		console.log(this.previewCard);
-		socket.send(JSON.stringify({ type: 'play', player: 'teste', card: this.previewCard.filename, row: nomeColuna}));
+	
+		const playedCard = removeCircularReferences(this.previewCard || oponentCard);
+		console.log("You played", this.previewCard)
+		socket.send(JSON.stringify({ type: "play", player: "teste", card: playedCard, row: nomeColuna}));
 
 		if (this.previewCard.name === "Decoy")
 			return;
 
-		let card = this.previewCard;
+		let card = this.previewCard || oponentCard;
 		let holder = card.holder;
 		this.hidePreview();
+		this.enablePlayer(false);
 		if (card.name === "Scorch"){
 			this.hidePreview();
 			await ability_dict["scorch"].activated(card);
@@ -1845,10 +1520,10 @@ class UI {
 	}
 	
 	// Displays a Carousel menu of filtered container items that match the predicate.
-	// Suspends gameplay until the Carousel is closed. Automatically picks random card if activated for AI player
+	// Suspends gameplay until the Carousel is closed.
 	async queueCarousel(container, count, action, predicate, bSort, bQuit, title){
 		if (game.currPlayer === player_op) {
-			if (player_op.controller instanceof ControllerAI)
+			if (player_op.controller instanceof ControllerOponent)
 				for (let i=0; i<count; ++i){
 					let cards = container.cards.reduce((a,c,i) => !predicate || predicate(c) ? a.concat([i]) : a, []);
 					await action(container, cards[randomInt(cards.length)]);
@@ -2010,6 +1685,7 @@ class Carousel {
 		}
 		
 		this.elem.classList.remove("hide");
+		ui.enablePlayer(true);
 	}
 	
 	// Called by the client to cycle cards displayed by n
@@ -2026,6 +1702,7 @@ class Carousel {
 		if (this.isLastSelection())
 			this.elem.classList.add("hide");
 		if (this.count <= 0)
+			ui.enablePlayer(false);
 		await this.action(this.container, this.indices[this.index]);
 		if (this.isLastSelection() && !this.cancelled)
 			return this.exit();
@@ -2038,6 +1715,7 @@ class Carousel {
 			this.cancelled = true;
 			this.exit();
 		}
+		ui.enablePlayer(true);
 	}
 	
 	// Returns true if there are no more cards to view or select
@@ -2101,6 +1779,7 @@ class Popup {
 		
 		this.elem.classList.remove("hide");
 		Popup.setCurrent(this);
+		ui.enablePlayer(true);
 	}
 	
 	// Sets this as the current popup window
@@ -2125,6 +1804,7 @@ class Popup {
 	
 	// Clears the popup and diables player interraction
 	clear() {
+		ui.enablePlayer(false);
 		this.elem.classList.add("hide");
 		Popup.clearCurrent();
 	}
@@ -2154,7 +1834,11 @@ class DeckMaker {
 		document.getElementById("download-deck").addEventListener("click", () => this.downloadDeck(), false);
 		document.getElementById("add-file").addEventListener("change", () => this.uploadDeck(), false);
 		document.getElementById("start-game").addEventListener("click", () => this.startNewGame(), false);
-		
+
+		setTimeout(() => {
+			socket.send(JSON.stringify({ type: "newGame" }));
+		}, 250);
+
 		this.update();
 	}
 	
@@ -2347,34 +2031,33 @@ class DeckMaker {
 	}
 	
 	// Verifies current deck, creates the players and their decks, then starts a new game
-	startNewGame(){
+	async startNewGame(){
 		let warning = "";
 		if (this.stats.units < 22)
 			warning += "Your deck must have at least 22 unit cards. \n";
 		if (this.stats.special > 10)
 			warning += "Your deck must have no more than 10 special cards. \n";
+		// if (!opponentAvailable) 
+		// 	warning += "Aguardando oponente...\n";
 		if (warning != "")
 			return alert(warning);
 		
+    // await waitForOpponent();
+
 		let me_deck = { 
 			faction: this.faction,
 			leader: card_dict[this.leader.index], 
 			cards: this.deck.filter(x => x.count > 0)
 		};
+
+		player_me = new Player(0, `Player ${playerId}`, me_deck );
 		
-		let op_deck = JSON.parse( premade_deck[randomInt(Object.keys(premade_deck).length)] );
-		op_deck.cards = op_deck.cards.map(c => ({index:c[0], count:c[1]}) );
-		//op_deck.leader = card_dict[op_deck.leader];
-		
-		let leaders = card_dict.filter(c => c.row === "leader" && c.deck === op_deck.faction);
-		op_deck.leader = leaders[randomInt(leaders.length)];
-		//op_deck.leader = card_dict.filter(c => c.row === "leader")[12];
-		
-		player_me = new Player(0, "Player 1", me_deck );
-		player_op = new Player(1, "Player 2", op_deck);
-		
-		this.elem.classList.add("hide");
-		game.startGame();
+		socket.send(JSON.stringify({ type: "ready", deck: me_deck }));
+		amReady = true;
+		if (oponentReady) {
+			this.elem.classList.add("hide");
+			game.startGame();
+		}
 	}
 	
 	// Converts the current deck to a JSON string
@@ -2387,7 +2070,7 @@ class DeckMaker {
 		return JSON.stringify(obj);
 	}
 	
-	// Called by the client to downlaod the current deck as a JSON file
+	// Called by the client to download the current deck as a JSON file
 	downloadDeck(){
 		let json = this.deckToJSON();
 		let str = "data:text/json;charset=utf-8," + encodeURIComponent(json);
@@ -2477,7 +2160,7 @@ async function translateTo(card, container_source, container_dest){
 	if (container_dest instanceof Row && container_dest.cards.length !== 0 && !card.isSpecial() ){
 		x += (container_dest.getSortedIndex(card) === container_dest.cards.length) ? elem.offsetWidth/2 : -elem.offsetWidth/2;
 	}
-	if (card.holder.controller instanceof ControllerAI)
+	if (card.holder.controller instanceof ControllerOponent)
 		x += elem.offsetWidth/2;
 	if (container_source instanceof Row && container_dest instanceof Grave && !card.isSpecial()) {
 		let mid = trueOffset(container_source.elem, true) + container_source.elem.offsetWidth/2;
@@ -2489,6 +2172,7 @@ async function translateTo(card, container_source, container_dest){
 	
 	// Returns true if the element is visible in the viewport
 	function isInDocument(elem){
+		if (!elem || !elem.getBoundingClientRect) return false
 		return elem.getBoundingClientRect().width !== 0;
 	}
 	
@@ -2507,7 +2191,7 @@ async function translateTo(card, container_source, container_dest){
 	
 	// Returns the source container's element to transition from
 	function getSourceElem(card, source, dest){
-		if (source instanceof HandAI)
+		if (source instanceof HandOponent)
 			return source.hidden_elem;
 		if (source instanceof Deck)
 			return source.elem.children[source.elem.children.length-2];
@@ -2516,9 +2200,9 @@ async function translateTo(card, container_source, container_dest){
 
 	// Returns the destination container's element to transition to
 	function getDestinationElem(card, source, dest){
-		if (dest instanceof HandAI)
+		if (dest instanceof HandOponent)
 			return dest.hidden_elem;
-		if (card.isSpecial() && dest instanceof Row)
+		if (card?.isSpecial && dest instanceof Row)
 			return dest.elem_special;
 		if (dest instanceof Row || dest instanceof Hand || dest instanceof Weather){
 			if (dest.cards.length === 0)
@@ -2630,6 +2314,75 @@ function sleepUntil(predicate, ms) {
 	});
 }
 
+
+// Remove referecnias circular. Nem eu sei.
+function removeCircularReferences(obj) {
+	const seen = new WeakSet();
+	return JSON.parse(JSON.stringify(obj, (key, value) => {
+			if (typeof value === "object" && value !== null) {
+					if (seen.has(value)) {
+							return;
+					}
+					seen.add(value);
+			}
+			return value;
+	}));
+}
+
+
+function createCardElement(card){
+	let elem = document.createElement("div");
+	elem.style.backgroundImage = smallURL(card.faction + "_" + card.filename);
+	elem.classList.add("card");
+	elem.addEventListener("click", () => ui.selectCard(card), false);
+	
+	if (card.row === "leader")
+		return elem;
+	
+	let power = document.createElement("div");
+	elem.appendChild(power);
+	let bg;
+	if (card.hero) {
+		bg = "power_hero";
+		elem.classList.add("hero");
+	} else if (card.faction === "weather") {
+		bg = "power_" + card.abilities[0];
+	} else if (card.faction === "special") {
+		bg = "power_" + card.abilities[0];
+		elem.classList.add("special");
+	} else {
+		bg = "power_normal";
+	}
+	power.style.backgroundImage = iconURL(bg);
+	
+	let row = document.createElement("div");
+	elem.appendChild(row);
+	if (card.row === "close" || card.row === "ranged" || card.row === "siege" || card.row === "agile") {
+		let num = document.createElement("div");
+		num.appendChild( document.createTextNode(card.basePower) );
+		num.classList.add("center");
+		power.appendChild(num);
+		row.style.backgroundImage = iconURL("card_row_" + card.row);
+	}
+
+	let abi = document.createElement("div");
+	elem.appendChild(abi);
+	if (card.faction !== "special" && card.faction !== "weather" && card.abilities.length > 0) {
+		let str =  card.abilities[card.abilities.length-1];
+		if (str === "cerys")
+			str = "muster";
+		if (str.startsWith("avenger"))
+			str = "avenger";
+		if (str === "scorch_c" || str == "scorch_r" || str === "scorch_s")
+			str = "scorch";
+		abi.style.backgroundImage = iconURL("card_ability_" + str);
+	} else if (card.row === "agile")
+		abi.style.backgroundImage = iconURL("card_ability_" + "agile");
+	
+	elem.appendChild( document.createElement("div") ); // animation overlay
+	return elem;
+}
+
 /*----------------------------------------------------*/
 
 var ui = new UI();
@@ -2638,4 +2391,5 @@ var weather = new Weather();
 var game = new Game();
 var player_me, player_op;
 
+ui.enablePlayer(false);
 let dm = new DeckMaker();

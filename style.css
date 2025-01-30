@@ -1144,6 +1144,18 @@ main { background-image: url('img/boardtest8.png'); }
 #deck-stats > p:nth-child(8) { background-image: url('img/icons/deck_stats_strength.png'); }
 #deck-stats > p:nth-child(10) { background-image: url('img/icons/deck_stats_hero.png'); }
 
+#oponent-ready {
+	position: absolute;
+	top: 83%;
+	left: 46.65%;
+	width: 6%;
+	height: 3%;
+	font-size: 0.98vw;
+	white-space: nowrap;
+	color: rgb(24, 168, 60);
+}
+
+
 #start-game {
 	position: absolute;
 	top: 86%;
@@ -1157,7 +1169,7 @@ main { background-image: url('img/boardtest8.png'); }
 	border: 0.1vw ridge rgb(30,30,30);
 }
 
-.card-contianer-title {
+.card-container-title {
 	position: absolute;
 	width: 10%;
 	height: 3%;
@@ -1298,5 +1310,5 @@ main { background-image: url('img/boardtest8.png'); }
 .fade {opacity: 0.2; filter: alpha(opacity=20); }
 
 .noclick {
-	pointer-events: none;
+	pointer-events: none !important;
 }
