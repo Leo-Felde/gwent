@@ -21,7 +21,7 @@ socket.onmessage = async(event) => {
 				console.log("Bem vindo. Seu id é ", playerId);
 				break;
 			
-			// Adversário está pronto
+			// Pre-game - Handles initial adversary configuration and start parameters
 			case "ready":
 				console.log("Adversário está pronto")
 				if (amReady) {
@@ -37,18 +37,18 @@ socket.onmessage = async(event) => {
 				}
 				break;
 			
-			// Pré-partida, carrega as cartas do adversário
+			// Pre-game - Initializes adversary's updated Hand and Deck
 			case "initial_reDraw":
 				console.log("Pré-partida, carrega as cartas do adversário")
-				console.log(data.cards)
-				for (let i = 0; i < data.cards.length; i++) {
-					const cardFromDict = card_dict.find(dict => dict.filename === data.cards[i].filename);
-					data.cards[i] = new Card(cardFromDict, player_op);
-				};
-				player_op.hand.cards = data.cards;
+
+				data.deck = fillCardElements(data.deck, player_op)
+				data.hand = fillCardElements(data.hand, player_op)
+
+				player_op.hand.cards = data.hand;
+				player_op.deck.cards = data.deck;
 				break;
 
-			// Inicio da partida, define quem vai primeiro
+			// Game-start - Checks which player begins the round
 			case 'coinToss':
 				console.log("Inicio da partida, Jogador " + data.player + " jogará primeiro");
 				const player = data.player === playerId ? player_me : player_op;
@@ -59,9 +59,9 @@ socket.onmessage = async(event) => {
 
 				break;
 
-			// Adversário jogou uma carta
+			// Game - Handles adversary card
 			case "play":
-				console.log("Adversário jogou uma carta");
+				console.log("Adversário jogou a carta");
 				const card = player_op.hand.cards.filter(c => c.filename === data.card.filename)[0];
 	
 				const rowData = data.row.split('-');
@@ -71,10 +71,10 @@ socket.onmessage = async(event) => {
 				player_op.playCardToRow(card, row);
 				break;
 
-			// Adversário passou o turno
+			// Game - Handles adversary pass
 			case "pass":
 				console.log("Adversário passou");
-				// player_op.passRound();
+				player_op.passRound();
 				break;
 		}
 };
@@ -92,6 +92,14 @@ async function waitForOpponent() {
 	}
 }
 
+function fillCardElements (cards, player) {
+	for (let i = 0; i < cards.length; i++) {
+		const cardFromDict = card_dict.find(dict => dict.filename === cards[i].filename);
+		cards[i] = new Card(cardFromDict, player);
+	};
+	return cards
+}
+
 // Oponent Controller
 class ControllerOponent {
 	constructor(player) {
@@ -107,7 +115,7 @@ class Player {
 		this.id = id;
 		this.tag = "me";
 		this.controller = (id === 0) ? new Controller() : new ControllerOponent(this);
-		
+
 		this.hand = (id === 0) ? new Hand(document.getElementById("hand-row")) : new HandOponent();
 		this.grave =  new Grave( document.getElementById("grave-" + this.tag));
 		this.deck = new Deck(deck.faction, document.getElementById("deck-" + this.tag));
@@ -462,8 +470,6 @@ class Grave extends CardContainer {
 		card.elem.style.left = "";
 		super.removeCardElement(card, index);
 		for (let i=index; i<this.cards.length; ++i){
-//			if (!this.cards[i])
-//				console.log(i, index, card, this.cards[i]);
 			this.setCardOffset(this.cards[i], i);
 		}
 	}
@@ -492,7 +498,7 @@ class Deck extends CardContainer {
 		function clone(n ,elem) { for (var  i=0, a=[]; i<n; ++i) a.push(elem); return a; }
 	}
 	
-	// Populates a this deck with a list of card data and associated those cards with the owner of this deck.
+	// Populates a deck with a list of card data and associated those cards with the owner of this deck.
 	initialize(card_data_list, player){
 		for (let i=0; i<card_data_list.length; ++i) {
 			let card = new Card(card_data_list[i], player);
@@ -609,8 +615,6 @@ class Row extends CardContainer {
 	
 	// Override
 	async addCard(card) {
-		// console.log("addCard")
-		// console.log(card)
 		if (card.isSpecial()) {
 			this.special = card;
 			this.elem_special.appendChild(card.elem);
@@ -1027,7 +1031,8 @@ class Game {
 	async initialRedraw(){
 		await ui.queueCarousel(player_me.hand, 2, async (c, i) => await player_me.deck.swap(c, c.removeCard(i)), c => true, true, true, "Choose up to 2 cards to redraw.");
 		ui.enablePlayer(false);
-		socket.send(JSON.stringify({ type: "initial_reDraw", cards: removeCircularReferences(player_me.hand.cards) }));
+
+		socket.send(JSON.stringify({ type: "initial_reDraw", hand: removeCircularReferences(player_me.hand.cards), deck: removeCircularReferences(player_me.deck.cards) }));
 	}
 	
 	// Initiates a new round of the game
@@ -1035,7 +1040,7 @@ class Game {
 		this.roundCount++;
 		this.currPlayer = (this.roundCount%2 === 0) ? this.firstPlayer : this.firstPlayer.opponent();
 		await this.runEffects(this.roundStart);
-		console.log('round start the current player is ', this.currPlayer)
+		
 		if ( !player_me.canPlay() )
 			player_me.setPassed(true);
 		if ( !player_op.canPlay() )
@@ -2153,8 +2158,8 @@ async function translateTo(card, container_source, container_dest){
 	let elem = card.elem;
 	let source = !container_source ? card.elem : getSourceElem(card, container_source, container_dest);
 	let dest = getDestinationElem(card, container_source, container_dest);
-	if (!isInDocument(elem))
-		source.appendChild(elem);
+	// if (!isInDocument(elem))
+	// 	source.appendChild(elem);
 	let x = trueOffsetLeft(dest) - trueOffsetLeft(elem) +dest.offsetWidth/2 - elem.offsetWidth;
 	let y = trueOffsetTop(dest) - trueOffsetTop(elem) +dest.offsetHeight/2 - elem.offsetHeight/2;
 	if (container_dest instanceof Row && container_dest.cards.length !== 0 && !card.isSpecial() ){
