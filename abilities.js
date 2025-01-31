@@ -254,7 +254,7 @@ var ability_dict = {
 		weight: (card, ai, max, data) => ai.weightMedic(data, 0, card.holder.opponent())
 	},
 	emhyr_invader: {
-		description: "Abilities that restore a unit to the battlefield restore a randomly-chosen unit. Affects both players.",
+		description: "Medics cannot choose which card to revive and draw a random one from the graveyard (affects both players).",
 		gameStart: () => game.randomRespawn = true
 	},
 	eredin_commander: {

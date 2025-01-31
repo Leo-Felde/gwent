@@ -21,9 +21,8 @@ socket.onmessage = async(event) => {
 				console.log("Bem vindo. Seu id é ", playerId);
 				break;
 			
-			// Pre-game - Handles initial adversary configuration and start parameters
+			// Pre-game - Handles initial adversary configuration and starting parameters
 			case "ready":
-				console.log("Adversário está pronto")
 				if (amReady) {
 					player_op = new Player(1, `Player ${playerId > 1 ? '1' : '2'}`, data.deck);
 					document.getElementById("deck-customization").classList.add("hide");
@@ -39,10 +38,8 @@ socket.onmessage = async(event) => {
 			
 			// Pre-game - Initializes adversary's updated Hand and Deck
 			case "initial_reDraw":
-				console.log("Pré-partida, carrega as cartas do adversário")
-
-				data.deck = fillCardElements(data.deck, player_op)
-				data.hand = fillCardElements(data.hand, player_op)
+				data.deck = fillCardElements(data.deck, player_op);
+				data.hand = fillCardElements(data.hand, player_op);
 
 				player_op.hand.cards = data.hand;
 				player_op.deck.cards = data.deck;
@@ -50,31 +47,52 @@ socket.onmessage = async(event) => {
 
 			// Game-start - Checks which player begins the round
 			case 'coinToss':
-				console.log("Inicio da partida, Jogador " + data.player + " jogará primeiro");
 				const player = data.player === playerId ? player_me : player_op;
+
 				game.firstPlayer = player;
 				game.currPlayer = player;
+
 				game.startTurn();
 				ui.notification(game.firstPlayer.tag + "-coin", 1200);
-
 				break;
 
-			// Game - Handles adversary card
+			// Game - Adversary plays card
 			case "play":
-				console.log("Adversário jogou a carta");
 				const card = player_op.hand.cards.filter(c => c.filename === data.card.filename)[0];
-	
-				const rowData = data.row.split('-');
-				const target = rowData[0] === "self" ? "target" : "self";
-				const row = board.row.filter(r => r.elem_parent.id === `${target}-${rowData[1]}`)[0];
-				console.log(card)
-				player_op.playCardToRow(card, row);
+				console.log("Adversário jogou a carta", card);
+
+				const splitRowName = data.row.split("-");
+				let row
+				if (splitRowName.length > 1) {
+					const targetRow = splitRowName[0] === "self" ? "target" : "self";
+					row = board.row.filter(r => r.elem_parent.id === `${targetRow}-${splitRowName[1]}`)[0];
+				} else {
+					row = data.row
+				}
+				
+				if (data.card.filename === "decoy") {
+					const replacedCard = row.cards.filter(bc => bc.filename === data.target.filename)[0]
+					if (!replacedCard) return
+					
+					board.moveTo(replacedCard, player_op.hand, row);
+				}
+				
+				if (row === "weather") 
+					await player_op.playCard(card, row);
+				else if (data.card.filename === "scorch")
+					await  player_op.playScorch(card);
+				else
+					await player_op.playCardToRow(card, row);
+					break;
+
+			// Game - Adversary pass
+			case "pass":
+				player_op.passRound();
 				break;
 
-			// Game - Handles adversary pass
-			case "pass":
-				console.log("Adversário passou");
-				player_op.passRound();
+			// Game - Adversary used the leader card
+			case "useLeader":
+				player_op.activateLeader()
 				break;
 		}
 };
@@ -196,7 +214,6 @@ class Player {
 	passRound(){
 		this.setPassed(true);
 		this.endTurn();
-		socket.send(JSON.stringify({ type: "pass", player: this.id }));
 	}
 	
 	// Plays a scorch card
@@ -283,9 +300,12 @@ class Player {
 		this.elem_leader.children[1].classList.remove("hide");
 		
 		if (this.id === 0 && this.leader.activated.length > 0){
-			this.elem_leader.addEventListener("click", 
-				async () => await ui.viewCard(this.leader, async () => await this.activateLeader()),
-				false);
+			this.elem_leader.addEventListener("click", async () => {
+				await ui.viewCard(this.leader, async () => {
+						socket.send(JSON.stringify({ type: "useLeader", player: this.id }));
+						await this.activateLeader();
+				});
+		});
 		} else {
 			this.elem_leader.addEventListener("click", async () => await ui.viewCard(this.leader), false);
 		}
@@ -516,7 +536,7 @@ class Deck extends CardContainer {
 		this.resize();
 	}
 	
-	// Sends the top card to the passed hand
+	// Sends the top card from the Deck to the Hand
 	async draw(hand){
 		let drawnCard = null
 		if (hand === player_op.hand) {
@@ -527,8 +547,8 @@ class Deck extends CardContainer {
 			await board.toHand(drawnCard, this);
 		}
 
-		// if (drawnCard !== null)
-			// socket.send(JSON.stringify({ type: "draw", player: "teste", card: drawnCard}));
+		if (drawnCard !== null)
+			return drawnCard
 	}
 	
 	// Draws a card and sends it to the container before adding a card from the container back to the deck.
@@ -1378,7 +1398,10 @@ class UI {
 		this.preview = document.getElementsByClassName("card-preview")[0];
 		this.previewCard = null;
 		this.lastRow = null;
-		document.getElementById("pass-button").addEventListener("click", () => player_me.passRound(), false);
+		document.getElementById("pass-button").addEventListener("click", () => {
+			socket.send(JSON.stringify({ type: "pass", player: playerId }));
+			player_me.passRound();
+		});
 		document.getElementById("click-background").addEventListener("click", () => ui.cancel(), false);
 	}
 	
@@ -1399,7 +1422,11 @@ class UI {
 		} else if (pCard.name === "Decoy") {
 			const nomeColuna = this.lastRow.elem_parent.id	
 			const playedCard = removeCircularReferences(this.previewCard);
-			socket.send(JSON.stringify({ type: "recover", player: "teste", card: playedCard, row: nomeColuna}));
+			const targetCard = removeCircularReferences(card);
+
+			console.log("You played", this.previewCard)
+			socket.send(JSON.stringify({ type: "play", player: playerId, card: playedCard, row: nomeColuna, target: targetCard }));
+			
 			this.hidePreview(card);
 			this.enablePlayer(false);
 			board.toHand(card, row);
@@ -1417,14 +1444,15 @@ class UI {
 			await ui.viewCardsInContainer(row);
 			return;
 		}
-		const nomeColuna = this.lastRow.elem_parent.id
-	
-		const playedCard = removeCircularReferences(this.previewCard || oponentCard);
-		console.log("You played", this.previewCard)
-		socket.send(JSON.stringify({ type: "play", player: "teste", card: playedCard, row: nomeColuna}));
 
+		const nomeColuna = this.lastRow.elem.id === "weather" ? this.lastRow.elem.id : this.lastRow.elem_parent.id
+		const playedCard = removeCircularReferences(this.previewCard || oponentCard);
+
+		console.log("You played", this.previewCard)
 		if (this.previewCard.name === "Decoy")
 			return;
+
+		socket.send(JSON.stringify({ type: "play", player: playerId, card: playedCard, row: nomeColuna}));
 
 		let card = this.previewCard || oponentCard;
 		let holder = card.holder;
@@ -1839,10 +1867,6 @@ class DeckMaker {
 		document.getElementById("download-deck").addEventListener("click", () => this.downloadDeck(), false);
 		document.getElementById("add-file").addEventListener("change", () => this.uploadDeck(), false);
 		document.getElementById("start-game").addEventListener("click", () => this.startNewGame(), false);
-
-		setTimeout(() => {
-			socket.send(JSON.stringify({ type: "newGame" }));
-		}, 250);
 
 		this.update();
 	}
@@ -2320,7 +2344,7 @@ function sleepUntil(predicate, ms) {
 }
 
 
-// Remove referecnias circular. Nem eu sei.
+// Remove circular references to create JSON.
 function removeCircularReferences(obj) {
 	const seen = new WeakSet();
 	return JSON.parse(JSON.stringify(obj, (key, value) => {

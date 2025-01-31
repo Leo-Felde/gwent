@@ -13,14 +13,7 @@ wss.on('connection', (ws) => {
 
         ws.on('message', (message) => {
             const data = JSON.parse(message);
-
-            if (data.type === 'newGame') {
-                if (players.length > 2) {
-                    players = [];
-                    players_ready = 0;
-                }
-            }
-
+            
             if (data.type === 'initial_reDraw') {
                 players_ready += 1;
                 console.log("Players ready " + players_ready);
