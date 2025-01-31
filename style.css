@@ -1209,7 +1209,7 @@ main { background-image: url('img/boardtest8.png'); }
 	
 	transition: margin-bottom 0.05s, margin-left .25s, margin-right .25s, transform 0.5s;
 	
-	z-index = 1;
+	z-index: 1;
 }
 
 .deck-card .card { position : absolute; }
@@ -1235,7 +1235,7 @@ main { background-image: url('img/boardtest8.png'); }
 	top: 13%;
 	left: 7%;
 	width: 50%;
-	heighth:  50%;
+	height:  50%;
 	font-size: 1vw;
 	font-weight: bold;
 	color: black;
