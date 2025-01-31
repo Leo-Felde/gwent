@@ -77,9 +77,14 @@ wss.on('connection', (ws) => {
     if (data.type === "gameStart") {
         if (ws.sessionCode && sessions[ws.sessionCode]) {
             const session = sessions[ws.sessionCode]; 
-            const firstPlayer = session.players[Math.floor(Math.random() * session.players.length)].playerId;
+            if (!sessions[ws.sessionCode]?.firstPlayer) {
+                const firstPlayer = session.players[Math.floor(Math.random() * session.players.length)].playerId;
+                sessions[ws.sessionCode].firstPlayer = firstPlayer
+            }
+            console.log("firstPlayer = ", sessions[ws.sessionCode].firstPlayer)
+
             session.players.forEach((player) => {
-                player.send(JSON.stringify({ type: 'coinToss', player: firstPlayer }));
+                player.send(JSON.stringify({ type: 'coinToss', player: sessions[ws.sessionCode].firstPlayer }));
               });
         }
     }
