@@ -106,17 +106,16 @@ function cancelSession () {
 }
 
 function copySessionId () {
-  // var sessionIdText = sessionIdDiv.innerHTML.slice(9);
-  // navigator.clipboard.writeText(sessionIdText);
-  const textToCopy = "Hello, World!"; // Text to copy
-  navigator.clipboard.writeText(textToCopy).then(() => {
+  var sessionIdText = sessionIdDiv.innerText.slice(9);
+
+  navigator.clipboard.writeText(sessionIdText).then(() => {
       const tooltip = document.getElementById("tooltip");
       tooltip.classList.add("show");
 
       // Hide tooltip after 2 seconds
       setTimeout(() => {
           tooltip.classList.remove("show");
-      }, 2000);
+      }, 1500);
   }).catch(err => {
       console.error("Failed to copy text: ", err);
   });
@@ -128,7 +127,7 @@ socket.addEventListener('message', (event) => {
   if (data.type === 'sessionCreated') {
     createdSessionId = data.code;
     sessionIdDiv.classList.remove("hidden");
-    console.log(sessionIdDiv)
+    
     sessionIdDiv.children[0].innerText = `Session: ${createdSessionId}`
     socket.removeEventListener('message', () => {});
   }
