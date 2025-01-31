@@ -22,8 +22,10 @@ socket.onmessage = async(event) => {
 				break;
 			
 			case "sessionReady":
-				document.getElementById("start-game").classList.remove("disabled");
+				startButtonElem.classList.remove("disabled");
 				break;
+			case "sessionUnready":
+				startButtonElem.classList.add("disabled");
 
 			// Pre-game - Handles initial adversary configuration and starting parameters
 			case "ready":
@@ -38,6 +40,11 @@ socket.onmessage = async(event) => {
 					player_op = new Player(1, `Player ${playerId > 1 ? '1' : '2'}`, data.deck);
 					oponentReady = true;
 				}
+				break;
+			
+			case "unReady":
+				console.log("oponent is not ready");
+				oponentReady = false;
 				break;
 			
 			// Pre-game - Initializes adversary's updated Hand and Deck
@@ -1861,7 +1868,7 @@ class DeckMaker {
 		
 		document.getElementById("download-deck").addEventListener("click", () => this.downloadDeck(), false);
 		document.getElementById("add-file").addEventListener("change", () => this.uploadDeck(), false);
-		document.getElementById("start-game").addEventListener("click", () => this.startNewGame(), false);
+		startButtonElem.addEventListener("click", () => this.startNewGame(), false);
 
 		this.update();
 	}
@@ -2056,7 +2063,16 @@ class DeckMaker {
 	
 	// Verifies current deck, creates the players and their decks, then starts a new game
 	async startNewGame(){
-		let warning = "";
+		if (!amReady) {
+			startButtonElem.classList.add("ready");
+		} else {
+			amReady = false;
+			startButtonElem.classList.remove("ready");
+			socket.send(JSON.stringify({ type: "unReady" }));
+			return
+		}
+		
+		let warning = "";;
 		if (this.stats.units < 22)
 			warning += "Your deck must have at least 22 unit cards. \n";
 		if (this.stats.special > 10)
@@ -2411,6 +2427,7 @@ var board = new Board();
 var weather = new Weather();
 var game = new Game();
 var player_me, player_op;
+const startButtonElem = document.getElementById("start-game");
 
 ui.enablePlayer(false);
 let dm = new DeckMaker();

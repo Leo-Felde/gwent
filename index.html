@@ -273,7 +273,7 @@
 	<button id="join-game">Join Game</button>
 	<span id="join-input">
 		<label for="session-input">Session code</label><br>
-		<input type="text" id="session-input" name="session-input">
+		<input type="text" id="session-input" name="session-input" oninput="let p=this.selectionStart;this.value=this.value.toUpperCase();this.setSelectionRange(p, p);">
 	</span>
 	<button id="confirm-join">Join</button>
 	<button id="start-game">Ready</button>

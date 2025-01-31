@@ -22,6 +22,8 @@ sessionIdDiv.classList.add("hidden");
 
 inputGroup.classList.add("hidden");
 
+let createdSessionId = null;
+let joinedSessionId = null;
 
 function createGame () {
   btnReadyElem.classList.remove("hidden");
@@ -53,8 +55,10 @@ function joinGame() {
         btnReadyElem.classList.remove("hidden");
         inputGroup.classList.add("hidden");
         btnConfirmJoin.classList.add("hidden");
+        joinedSessionId = sessionCode;
       } else {
         alert("Invalid session");
+        joinedSessionId = null;
       }
     }
   });
@@ -87,6 +91,16 @@ function cancelSession () {
 
   btnConfirmJoin.classList.add("hidden");
   inputGroup.classList.add("hidden");
+
+  if (createdSessionId) {
+    console.log("Cancelled Session of code: " + createdSessionId);
+    socket.send(JSON.stringify({ type: "cancelSession", code: createdSessionId }));
+    createdSessionId = null;
+  } else if (joinedSessionId) {
+    console.log("Left Session of code: " + joinedSessionId);
+    socket.send(JSON.stringify({ type: "leaveSession", code: joinedSessionId }));
+    joinedSessionId = null;
+  }
 }
 
 socket.addEventListener('message', (event) => {
@@ -94,7 +108,8 @@ socket.addEventListener('message', (event) => {
 
   if (data.type === 'sessionCreated') {
     console.log("Your session was created with the code: " + data.code);
+    createdSessionId = data.code;
     sessionIdDiv.classList.remove("hidden");
-    sessionIdDiv.innerHTML = `Session: ${data.code}`
+    sessionIdDiv.innerHTML = `Session: ${createdSessionId}`
   }
 });

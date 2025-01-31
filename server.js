@@ -41,6 +41,24 @@ wss.on('connection', (ws) => {
       ws.send(JSON.stringify({ type: 'sessionJoined', code: sessionCode }));
     }
 
+    if (data.type === "cancelSession") {
+        const sessionCode = data.code;
+        if (!sessions[sessionCode])
+            return
+        
+        console.log(`# Player ${ws.playerId} cancelled Session ${sessionCode}`);
+        delete sessions[ws.sessionCode]
+    }
+
+    if (data.type === "leaveSession") {
+        const sessionCode = data.code;
+        if (!sessions[sessionCode])
+            return
+        
+        console.log(`# Player ${ws.playerId} left Session ${sessionCode}`);
+        sessions[sessionCode].players.filter(player => player !== ws);
+    }
+
     if (data.type === 'joinSession') {
       const sessionCode = data.code;
       if (sessions[sessionCode] && sessions[sessionCode].players.length === 1) {
@@ -86,14 +104,26 @@ wss.on('connection', (ws) => {
 
   ws.on('close', () => {
     console.log(`# Player ${ws.playerId} disconnected`);
-
+  
     // Check if the player has an active session
     if (ws.sessionCode && sessions[ws.sessionCode]) {
-      console.log(`# Deleting session ${ws.sessionCode} because the creator left`);
-      delete sessions[ws.sessionCode]; // Delete the session
-    }
+      const session = sessions[ws.sessionCode];
+  
+      // Check if the player is the creator of the session
+      if (session.players[0] === ws) {
+        // If the creator disconnects, delete the session
+        console.log(`# Deleting session ${ws.sessionCode} because the creator left`);
+        delete sessions[ws.sessionCode];
+      } else {
+        // If a non-creator disconnects, remove them from the session and set unready
+        session.players = session.players.filter(player => player !== ws);
+        session.players[0].send(JSON.stringify({ type: "unReady" }))
+        session.players[0].send(JSON.stringify({ type: "sessionUnready" }))
 
-    // Remove the player from the players list
+        console.log(`# Player ${ws.playerId} left the session ${ws.sessionCode}`);
+      }
+    }
+  
     players = players.filter(player => player !== ws);
   });
 });
