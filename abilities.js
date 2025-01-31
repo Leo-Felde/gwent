@@ -131,7 +131,7 @@ var ability_dict = {
 			let wrapper = {card : null};
 			if (game.randomRespawn) {
 				 wrapper.card = grave.findCardsRandom(c => c.isUnit())[0];
-			} else if (card.holder.controller instanceof ControllerAI)
+			} else if (card.holder.controller instanceof ControllerOponent)
 				wrapper.card =  card.holder.controller.medic(card, grave);
 			else
 				await ui.queueCarousel(card.holder.grave, 1, (c, i) => wrapper.card=c.cards[i], c => c.isUnit(), true);
@@ -217,7 +217,7 @@ var ability_dict = {
 	emhyr_emperor: {
 		description: "Look at 3 random cards from your opponent's hand.",
 		activated: async card => {
-			if (card.holder.controller instanceof ControllerAI)
+			if (card.holder.controller instanceof ControllerOponent)
 				return;
 			let container = new CardContainer();
 			container.cards = card.holder.opponent().hand.findCardsRandom(() => true, 3);
@@ -238,7 +238,7 @@ var ability_dict = {
 			let grave = board.getRow(card, "grave", card.holder.opponent());
 			if (grave.findCards(c => c.isUnit()).length === 0)
 				return;
-			if (card.holder.controller instanceof ControllerAI) {
+			if (card.holder.controller instanceof ControllerOponent) {
 				let newCard = card.holder.controller.medic(card, grave);
 				newCard.holder = card.holder;
 				await board.toHand(newCard, grave);
@@ -267,7 +267,7 @@ var ability_dict = {
 		description: "Restore a card from your discard pile to your hand.",
 		activated: async card => {
 			let newCard;
-			if (card.holder.controller instanceof ControllerAI) {
+			if (card.holder.controller instanceof ControllerOponent) {
 				newCard = card.holder.controller.medic(card, card.holder.grave)
 			} else {
 				Carousel.curr.exit();
@@ -283,7 +283,7 @@ var ability_dict = {
 		activated: async (card) => {
 			let hand = board.getRow(card, "hand", card.holder);
 			let deck = board.getRow(card, "deck", card.holder);
-			if (card.holder.controller instanceof ControllerAI) {
+			if (card.holder.controller instanceof ControllerOponent) {
 				let cards = card.holder.controller.discardOrder(card).splice(0,2).filter(c => c.basePower < 7);
 				await Promise.all(cards.map(async c => await board.toGrave(c, card.holder.hand)));
 				card.holder.deck.draw(card.holder.hand);
@@ -304,7 +304,7 @@ var ability_dict = {
 		description: "Pick any weather card from your deck and play it instantly.",
 		activated: async card => {
 			let deck = board.getRow(card, "deck", card.holder);
-			if (card.holder.controller instanceof ControllerAI) {
+			if (card.holder.controller instanceof ControllerOponent) {
 				await ability_dict["eredin_king"].helper(card).card.autoplay(card.holder.deck);
 			} else {
 				Carousel.curr.cancel();

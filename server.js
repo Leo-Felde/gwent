@@ -77,7 +77,7 @@ wss.on('connection', (ws) => {
     if (data.type === "gameStart") {
         if (ws.sessionCode && sessions[ws.sessionCode]) {
             const session = sessions[ws.sessionCode]; 
-            const firstPlayer = Math.random() < 0.5 ? 1 : 2;
+            const firstPlayer = session.players[Math.floor(Math.random() * session.players.length)].playerId;
             session.players.forEach((player) => {
                 player.send(JSON.stringify({ type: 'coinToss', player: firstPlayer }));
               });
