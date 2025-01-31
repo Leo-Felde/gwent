@@ -16,8 +16,6 @@
 
 <div id="dimensions" style="position:fixed;width:100vw;height:calc(100vw * 1080 / 1920);"></div>
 
-<div id="youtube"></div>
-
 <main>
 
 	<section id="click-background" class="noclick"></section>
@@ -41,8 +39,6 @@
 			<div id="deck-name-op" class="deck-name"></div>
 			
 			<div id="hand-count-op" class="hand-count">6</div>
-			
-			
 			
 			<div id="gem1-op" class="gem gem-on bg-contain"></div>
 			<div id="gem2-op" class="gem gem-on bg-contain"></div>
@@ -273,7 +269,16 @@
 		<p>0</p>
 	</div>
 	<span class="hide" id="oponent-ready"> PRONTO </span>
+	<button id="create-game">Create Game</button>
+	<button id="join-game">Join Game</button>
+	<span id="join-input">
+		<label for="session-input">Session code</label><br>
+		<input type="text" id="session-input" name="session-input">
+	</span>
+	<button id="confirm-join">Join</button>
 	<button id="start-game">Ready</button>
+	<button id="cancel-game">Cancel</button>
+	<span id="session-id"> Session: </span>
 </section>
 
 <script type="text/javascript" src="cards.js"></script>
@@ -282,6 +287,7 @@
 <script type="text/javascript" src="factions.js"></script>
 <script src="https://www.youtube.com/iframe_api"></script>
 <script type="text/javascript" src="gwent.js"></script>
+<script type="text/javascript" src="session.js"></script>
 </body>
 
 </html>

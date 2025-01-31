@@ -1144,7 +1144,7 @@ main { background-image: url('img/boardtest8.png'); }
 #deck-stats > p:nth-child(8) { background-image: url('img/icons/deck_stats_strength.png'); }
 #deck-stats > p:nth-child(10) { background-image: url('img/icons/deck_stats_hero.png'); }
 
-#oponent-ready {
+/* #oponent-ready {
 	position: absolute;
 	top: 83%;
 	left: 46.65%;
@@ -1153,13 +1153,60 @@ main { background-image: url('img/boardtest8.png'); }
 	font-size: 0.98vw;
 	white-space: nowrap;
 	color: rgb(24, 168, 60);
+} */
+
+#create-game {
+	position: absolute;
+	top: 80%;
+	left: 46.65%;
+	width: 7%;
+	height: 3%;
+	font-size: 0.98vw;
+	white-space: nowrap;
+	color: white;
+	background-color: rgb(20,20,20);
+	box-shadow: 0px 3px 5px 0px rgba(0, 0, 0, 0.4);
+	border: 0.1vw ridge rgb(30,30,30);
 }
 
+#join-game {
+	position: absolute;
+	top: 84%;
+	left: 46.65%;
+	width: 7%;
+	height: 3%;
+	font-size: 0.98vw;
+	white-space: nowrap;
+	color: white;
+	background-color: rgb(20,20,20);
+	box-shadow: 0px 3px 5px 0px rgba(0, 0, 0, 0.4);
+	border: 0.1vw ridge rgb(30,30,30);
+}
+
+#join-game:hover, #confirm-join:hover, #create-game:hover, #start-game:hover, #cancel-game:hover {
+  box-shadow: 0 0 rgba(0, 0, 0, 0.4);
+  border-bottom-width: 2px;
+  transform: translateY(2px);
+}
+
+#confirm-join {
+	position: absolute;
+	top: 80.5%;
+	left: 53.35%;
+	width: 3%;
+	height: 3%;
+	font-size: 0.98vw;
+	white-space: nowrap;
+	color: white;
+	background-color: rgb(20,20,20);
+	box-shadow: 0px 3px 5px 0px rgba(0, 0, 0, 0.4);
+	border: 0.1vw ridge rgb(30,30,30);
+}
 
 #start-game {
 	position: absolute;
-	top: 86%;
-	left: 46.65%;
+	top: 80%;
+	left: 47%;
 	width: 6%;
 	height: 3%;
 	font-size: 0.98vw;
@@ -1167,6 +1214,46 @@ main { background-image: url('img/boardtest8.png'); }
 	color: white;
 	background-color: rgb(20,20,20);
 	border: 0.1vw ridge rgb(30,30,30);
+	box-shadow: 0px 3px 5px 0px rgba(0, 0, 0, 0.4);
+}
+
+#cancel-game {
+	position: absolute;
+	top: 84%;
+	left: 47.5%;
+	width: 5%;
+	height: 3%;
+	font-size: 0.98vw;
+	white-space: nowrap;
+	color: white;
+	background-color: rgb(20,20,20);
+	box-shadow: 0px 3px 5px 0px rgba(0, 0, 0, 0.4);
+	border: 0.1vw ridge rgb(30,30,30);
+}
+
+#join-input {
+	position: absolute;
+	top: 79.5%;
+	left: 47.65%;
+}
+
+#join-input label {
+	font-size: 1rem;
+	color: white;
+}
+
+#join-input input {
+	width: 97px;
+}
+
+#session-id{
+	position: absolute;
+	top: 88%;
+	left: 47.2%;
+	color: #fefefe;
+	font-weight: bold;
+	font-size: 1rem;
+	user-select: all !important;
 }
 
 .card-container-title {
@@ -1308,6 +1395,17 @@ main { background-image: url('img/boardtest8.png'); }
 .visible { display: visible; }
 .hide {display: none; }
 .fade {opacity: 0.2; filter: alpha(opacity=20); }
+.hidden { visibility: hidden; }
+.disabled {
+	background: rgb(51, 51, 51) !important;
+	pointer-events: none;
+	cursor: url('img/icons/cursor.png'), auto;
+ }
+ .disabled:hover {
+	box-shadow: 0px 3px 5px 0px rgba(0, 0, 0, 0.4) !important;
+	/* border-bottom-width: 2px; */
+  transform: translateY(0px) !important; 
+ }
 
 .noclick {
 	pointer-events: none !important;

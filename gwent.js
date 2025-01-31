@@ -17,10 +17,14 @@ socket.onmessage = async(event) => {
 
 		switch (data.type) {
 			case "welcome":
-				playerId = data.player;
-				console.log("Bem vindo. Seu id é ", playerId);
+				playerId = data.playerId;
+				console.log("Welcome, your id is " + playerId);
 				break;
 			
+			case "sessionReady":
+				document.getElementById("start-game").classList.remove("disabled");
+				break;
+
 			// Pre-game - Handles initial adversary configuration and starting parameters
 			case "ready":
 				if (amReady) {
@@ -30,7 +34,7 @@ socket.onmessage = async(event) => {
 					game.startGame();
 					return
 				} else {
-					document.getElementById("oponent-ready").classList.remove("hide");
+					// document.getElementById("oponent-ready").classList.remove("hide");
 					player_op = new Player(1, `Player ${playerId > 1 ? '1' : '2'}`, data.deck);
 					oponentReady = true;
 				}
@@ -59,7 +63,7 @@ socket.onmessage = async(event) => {
 			// Game - Adversary plays card
 			case "play":
 				const card = player_op.hand.cards.filter(c => c.filename === data.card.filename)[0];
-				console.log("Adversário jogou a carta", card);
+				console.log("Adversary plays card", card);
 
 				const splitRowName = data.row.split("-");
 				let row
@@ -100,15 +104,6 @@ socket.onmessage = async(event) => {
 socket.onclose = () => {
     console.log('Disconnected from the server');
 };
-
-async function waitForOpponent() {
-	while (true) {
-			if (opponentAvailable) {
-					return;
-			}
-			await new Promise(resolve => setTimeout(resolve, 5000)); // Wait for 5 seconds before checking again
-	}
-}
 
 function fillCardElements (cards, player) {
 	for (let i = 0; i < cards.length; i++) {
@@ -1424,7 +1419,7 @@ class UI {
 			const playedCard = removeCircularReferences(this.previewCard);
 			const targetCard = removeCircularReferences(card);
 
-			console.log("You played", this.previewCard)
+			console.log("You played the card", this.previewCard)
 			socket.send(JSON.stringify({ type: "play", player: playerId, card: playedCard, row: nomeColuna, target: targetCard }));
 			
 			this.hidePreview(card);
@@ -1448,7 +1443,7 @@ class UI {
 		const nomeColuna = this.lastRow.elem.id === "weather" ? this.lastRow.elem.id : this.lastRow.elem_parent.id
 		const playedCard = removeCircularReferences(this.previewCard || oponentCard);
 
-		console.log("You played", this.previewCard)
+		console.log("You played the card", this.previewCard)
 		if (this.previewCard.name === "Decoy")
 			return;
 
@@ -2066,12 +2061,9 @@ class DeckMaker {
 			warning += "Your deck must have at least 22 unit cards. \n";
 		if (this.stats.special > 10)
 			warning += "Your deck must have no more than 10 special cards. \n";
-		// if (!opponentAvailable) 
-		// 	warning += "Aguardando oponente...\n";
+			
 		if (warning != "")
 			return alert(warning);
-		
-    // await waitForOpponent();
 
 		let me_deck = { 
 			faction: this.faction,
