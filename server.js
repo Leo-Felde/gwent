@@ -5,7 +5,6 @@ const wss = new WebSocket.Server({ port: PORT });
 
 let sessions = {}; // Stores active sessions with their codes
 let players = []; // Stores connected players
-let players_ready = 0;
 
 // Helper function to generate a random 4-character code
 function generateCode() {
@@ -32,7 +31,7 @@ wss.on('connection', (ws) => {
       // Generate a unique 4-character code
       const sessionCode = generateCode();
       // Create a new session and auto-join the creator
-      sessions[sessionCode] = { players: [ws], code: sessionCode };
+      sessions[sessionCode] = { players: [ws], code: sessionCode, playersReady: 0 };
       ws.sessionCode = sessionCode; // Store the session code on the WebSocket object
       ws.send(JSON.stringify({ type: 'sessionCreated', code: sessionCode }));
       console.log(`# Player ${ws.playerId} created Session ${sessionCode}`);
@@ -42,21 +41,19 @@ wss.on('connection', (ws) => {
     }
 
     if (data.type === "cancelSession") {
-        const sessionCode = data.code;
-        if (!sessions[sessionCode])
-            return
-        
-        console.log(`# Player ${ws.playerId} cancelled Session ${sessionCode}`);
-        delete sessions[ws.sessionCode]
+      const sessionCode = data.code;
+      if (!sessions[sessionCode]) return;
+
+      console.log(`# Player ${ws.playerId} cancelled Session ${sessionCode}`);
+      delete sessions[ws.sessionCode];
     }
 
     if (data.type === "leaveSession") {
-        const sessionCode = data.code;
-        if (!sessions[sessionCode])
-            return
-        
-        console.log(`# Player ${ws.playerId} left Session ${sessionCode}`);
-        sessions[sessionCode].players.filter(player => player !== ws);
+      const sessionCode = data.code;
+      if (!sessions[sessionCode]) return;
+
+      console.log(`# Player ${ws.playerId} left Session ${sessionCode}`);
+      sessions[sessionCode].players = sessions[sessionCode].players.filter(player => player !== ws);
     }
 
     if (data.type === 'joinSession') {
@@ -64,7 +61,7 @@ wss.on('connection', (ws) => {
       if (sessions[sessionCode] && sessions[sessionCode].players.length === 1) {
         // Add the second player to the session
         sessions[sessionCode].players.push(ws);
-        ws.sessionCode = sessionCode; 
+        ws.sessionCode = sessionCode;
         ws.send(JSON.stringify({ type: 'sessionJoined', code: sessionCode }));
         console.log(`# Player ${ws.playerId} joined Session ${sessionCode}`);
 
@@ -77,17 +74,29 @@ wss.on('connection', (ws) => {
       }
     }
 
+    if (data.type === "gameStart") {
+        if (ws.sessionCode && sessions[ws.sessionCode]) {
+            const session = sessions[ws.sessionCode]; 
+            const firstPlayer = Math.random() < 0.5 ? 1 : 2;
+            session.players.forEach((player) => {
+                player.send(JSON.stringify({ type: 'coinToss', player: firstPlayer }));
+              });
+        }
+    }
+
     if (data.type === 'initial_reDraw') {
-      players_ready += 1;
-      console.log("# Players ready " + players_ready);
-      if (players_ready === 2) {
-        const firstPlayer = Math.random() < 0.5 ? 1 : 2;
-        players.forEach((player) => {
-          player.send(JSON.stringify({ type: 'coinToss', player: firstPlayer }));
-        });
-      } else if (players_ready > 2) {
-        players_ready = 0;
-        players = [];
+      if (ws.sessionCode && sessions[ws.sessionCode]) {
+        const session = sessions[ws.sessionCode];
+        session.playersReady += 1; // Increment the ready counter for the session
+
+        console.log(`# Players ready in session ${ws.sessionCode}: ${session.playersReady}`);
+
+        if (session.playersReady === 2) {
+            session.players.forEach((player) => {
+                player.send(JSON.stringify({ type: 'start' }));
+              });
+          session.playersReady = 0;
+        }
       }
     }
 
@@ -104,28 +113,28 @@ wss.on('connection', (ws) => {
 
   ws.on('close', () => {
     console.log(`# Player ${ws.playerId} disconnected`);
-  
+
     // Check if the player has an active session
     if (ws.sessionCode && sessions[ws.sessionCode]) {
       const session = sessions[ws.sessionCode];
-  
+
       // Check if the player is the creator of the session
       if (session.players[0] === ws) {
         // If the creator disconnects, delete the session
         console.log(`# Deleting session ${ws.sessionCode} because the creator left`);
         delete sessions[ws.sessionCode];
       } else {
-        // If a non-creator disconnects, remove them from the session and set unready
+        // If a non-creator disconnects, remove them from the session and notify the creator
         session.players = session.players.filter(player => player !== ws);
-        session.players[0].send(JSON.stringify({ type: "unReady" }))
-        session.players[0].send(JSON.stringify({ type: "sessionUnready" }))
-
+        session.players[0].send(JSON.stringify({ type: 'unReady' }));
+        session.players[0].send(JSON.stringify({ type: 'sessionUnready' }));
         console.log(`# Player ${ws.playerId} left the session ${ws.sessionCode}`);
       }
     }
-  
+
+    // Remove the player from the players list
     players = players.filter(player => player !== ws);
   });
 });
 
-console.log(`## Sever is up and running ##`);
+console.log(`## Server is up and running ##`);

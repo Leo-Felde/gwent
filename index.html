@@ -238,7 +238,7 @@
 	
 	<label id="upload-deck" class="deck-options">
 		<input type="file" id="add-file" value="Import" style="display:none;"/>
-		Upload Deck
+		Load Deck
 	</label>
 	
 	<a id="change-faction" class="deck-options">Change Faction</a>
@@ -273,12 +273,15 @@
 	<button id="join-game">Join Game</button>
 	<span id="join-input">
 		<label for="session-input">Session code</label><br>
-		<input type="text" id="session-input" name="session-input" oninput="let p=this.selectionStart;this.value=this.value.toUpperCase();this.setSelectionRange(p, p);">
+		<input type="text" id="session-input" maxlength="4" name="session-input" oninput="let p=this.selectionStart;this.value=this.value.toUpperCase();this.setSelectionRange(p, p);">
 	</span>
 	<button id="confirm-join">Join</button>
 	<button id="start-game">Ready</button>
 	<button id="cancel-game">Cancel</button>
-	<span id="session-id"> Session: </span>
+	<div id="session-id">
+		<button class="copy-btn" onclick="copyToClipboard()">Copy Text</button>
+		<span class="tooltip" id="tooltip">Copied to clipboard</span>
+	</div>
 </section>
 
 <script type="text/javascript" src="cards.js"></script>

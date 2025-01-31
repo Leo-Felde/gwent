@@ -1,14 +1,14 @@
 const btnCreateElem = document.getElementById("create-game");
-btnCreateElem.addEventListener("click", () => createGame(), false);
+btnCreateElem.addEventListener("click", () => createGame());
 
 btnJoinElem = document.getElementById("join-game");
-btnJoinElem.addEventListener("click", () => joinGame(), false);
+btnJoinElem.addEventListener("click", () => joinGame());
 
 btnReadyElem = document.getElementById("start-game");
 btnReadyElem.classList.add("hidden");
 
 btnCancelElem = document.getElementById("cancel-game");
-btnCancelElem.addEventListener("click", () => cancelSession(), false);
+btnCancelElem.addEventListener("click", () => cancelSession());
 btnCancelElem.classList.add("hidden");
 
 btnConfirmJoin = document.getElementById("confirm-join");
@@ -16,8 +16,10 @@ btnConfirmJoin.classList.add("hidden");
 
 inputGroup = document.getElementById("join-input");
 inputField = document.getElementById("session-input");
+inputField.value = "";
 
 sessionIdDiv = document.getElementById("session-id");
+sessionIdDiv.addEventListener("click", () => copySessionId());
 sessionIdDiv.classList.add("hidden");
 
 inputGroup.classList.add("hidden");
@@ -103,13 +105,31 @@ function cancelSession () {
   }
 }
 
+function copySessionId () {
+  // var sessionIdText = sessionIdDiv.innerHTML.slice(9);
+  // navigator.clipboard.writeText(sessionIdText);
+  const textToCopy = "Hello, World!"; // Text to copy
+  navigator.clipboard.writeText(textToCopy).then(() => {
+      const tooltip = document.getElementById("tooltip");
+      tooltip.classList.add("show");
+
+      // Hide tooltip after 2 seconds
+      setTimeout(() => {
+          tooltip.classList.remove("show");
+      }, 2000);
+  }).catch(err => {
+      console.error("Failed to copy text: ", err);
+  });
+}
+
 socket.addEventListener('message', (event) => {
   const data = JSON.parse(event.data);
 
   if (data.type === 'sessionCreated') {
-    console.log("Your session was created with the code: " + data.code);
     createdSessionId = data.code;
     sessionIdDiv.classList.remove("hidden");
-    sessionIdDiv.innerHTML = `Session: ${createdSessionId}`
+    console.log(sessionIdDiv)
+    sessionIdDiv.children[0].innerText = `Session: ${createdSessionId}`
+    socket.removeEventListener('message', () => {});
   }
 });

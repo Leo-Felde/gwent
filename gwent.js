@@ -27,8 +27,9 @@ socket.onmessage = async(event) => {
 			case "sessionUnready":
 				startButtonElem.classList.add("disabled");
 
-			// Pre-game - Handles initial adversary configuration and starting parameters
+			// Pre-game - Handles initial Oponent configuration and starting parameters
 			case "ready":
+				console.log("Oponent is ready");
 				if (amReady) {
 					player_op = new Player(1, `Player ${playerId > 1 ? '1' : '2'}`, data.deck);
 					document.getElementById("deck-customization").classList.add("hide");
@@ -43,11 +44,11 @@ socket.onmessage = async(event) => {
 				break;
 			
 			case "unReady":
-				console.log("oponent is not ready");
+				console.log("Oponent changed his mind");
 				oponentReady = false;
 				break;
 			
-			// Pre-game - Initializes adversary's updated Hand and Deck
+			// Pre-game - Initializes Oponent's updated Hand and Deck
 			case "initial_reDraw":
 				data.deck = fillCardElements(data.deck, player_op);
 				data.hand = fillCardElements(data.hand, player_op);
@@ -56,21 +57,17 @@ socket.onmessage = async(event) => {
 				player_op.deck.cards = data.deck;
 				break;
 
-			// Game-start - Checks which player begins the round
-			case 'coinToss':
-				const player = data.player === playerId ? player_me : player_op;
-
-				game.firstPlayer = player;
-				game.currPlayer = player;
-
-				game.startTurn();
-				ui.notification(game.firstPlayer.tag + "-coin", 1200);
+			// Game-start
+			case 'start':
+				console.log("---------------------")
+				console.log("Match start")
+				game.startRound()
 				break;
 
-			// Game - Adversary plays card
+			// Game - Oponent plays card
 			case "play":
 				const card = player_op.hand.cards.filter(c => c.filename === data.card.filename)[0];
-				console.log("Adversary plays card", card);
+				console.log("Oponent plays card", card);
 
 				const splitRowName = data.row.split("-");
 				let row
@@ -96,12 +93,12 @@ socket.onmessage = async(event) => {
 					await player_op.playCardToRow(card, row);
 					break;
 
-			// Game - Adversary pass
+			// Game - Oponent pass
 			case "pass":
 				player_op.passRound();
 				break;
 
-			// Game - Adversary used the leader card
+			// Game - Oponent used the leader card
 			case "useLeader":
 				player_op.activateLeader()
 				break;
@@ -1030,20 +1027,30 @@ class Game {
 		}));
 		
 		await this.runEffects(this.gameStart);
-		socket.send(JSON.stringify({ type: 'game start' }));
+		socket.send(JSON.stringify({ type: 'gameStart' }));
 
-		await this.initialRedraw();
 		await this.coinToss();
-		game.startRound();
+		await this.initialRedraw();
+		// game.startRound();
 	}
 	
 	// Determines who starts first
 	async coinToss() {
 		return new Promise((resolve) => {
-			const handleMessage = (event) => {
+			const handleMessage = async (event) => {
+				const data = JSON.parse(event.data);
 
-				if (event.data.type === 'coinToss')
+				if (data.type === 'coinToss') {
+					const player = data.player === playerId ? player_me : player_op;
+					
+					game.firstPlayer = player;
+					game.currPlayer = player;
+					console.log(`Coin toss result: ${data.player === playerId ? 'you' : 'oponnent'} will go first`)
+					
+					socket.removeEventListener('message', handleMessage);
+					await ui.notification(game.firstPlayer.tag + "-coin", 1200);
 					resolve(true);
+				}
 			}
 			socket.addEventListener('message', handleMessage);
 		});
@@ -1557,14 +1564,6 @@ class UI {
 	// Displays a Carousel menu of filtered container items that match the predicate.
 	// Suspends gameplay until the Carousel is closed.
 	async queueCarousel(container, count, action, predicate, bSort, bQuit, title){
-		if (game.currPlayer === player_op) {
-			if (player_op.controller instanceof ControllerOponent)
-				for (let i=0; i<count; ++i){
-					let cards = container.cards.reduce((a,c,i) => !predicate || predicate(c) ? a.concat([i]) : a, []);
-					await action(container, cards[randomInt(cards.length)]);
-				}
-			return;
-		}
 		let carousel = new Carousel(container, count, action, predicate, bSort, bQuit, title);
 		if (Carousel.curr === undefined || Carousel.curr === null)
 			carousel.start();

@@ -1257,7 +1257,36 @@ main { background-image: url('img/boardtest8.png'); }
 	color: #fefefe;
 	font-weight: bold;
 	font-size: 1rem;
-	user-select: all !important;
+	user-select: text !important;
+	cursor: pointer;
+}
+
+.copy-btn {
+	color: white;
+	background: transparent;
+	border: none;
+	font-size: 1rem;
+	cursor: pointer;
+	position: relative;
+}
+.tooltip {
+	position: absolute;
+	bottom: 120%;
+	left: 50%;
+	transform: translateX(-50%);
+	background-color: black;
+	color: white;
+	padding: 5px 10px;
+	border-radius: 5px;
+	font-size: 14px;
+	visibility: hidden;
+	opacity: 0;
+	transition: opacity 0.3s ease-in-out;
+	white-space: nowrap;
+}
+.tooltip.show {
+	visibility: visible;
+	opacity: 1;
 }
 
 .card-container-title {
