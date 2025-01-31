@@ -131,9 +131,22 @@ var ability_dict = {
 			let wrapper = {card : null};
 			if (game.randomRespawn) {
 				 wrapper.card = grave.findCardsRandom(c => c.isUnit())[0];
-			} else if (card.holder.controller instanceof ControllerOponent)
-				wrapper.card =  card.holder.controller.medic(card, grave);
-			else
+			} else if (card.holder.controller instanceof ControllerOponent) {
+				// Wait for the oponent to choose which card to revive
+				wrapper.card = await new Promise((resolve) => {
+					const handleMessage = async (event) => {
+						const data = JSON.parse(event.data);
+						if (data.type === "medicDraw") {
+							const drawnCard = grave.cards.filter(c => c.isUnit())[data.index]
+							if (drawnCard) {
+								socket.removeEventListener('message', handleMessage);
+								resolve(drawnCard);
+							}
+						}
+					}
+					socket.addEventListener('message', handleMessage);
+				});
+			} else
 				await ui.queueCarousel(card.holder.grave, 1, (c, i) => wrapper.card=c.cards[i], c => c.isUnit(), true);
 			let res = wrapper.card;
 			grave.removeCard(res);
@@ -217,8 +230,20 @@ var ability_dict = {
 	emhyr_emperor: {
 		description: "Look at 3 random cards from your opponent's hand.",
 		activated: async card => {
-			if (card.holder.controller instanceof ControllerOponent)
-				return;
+			// Wait for the oponent to close the carousel
+			if (card.holder.controller instanceof ControllerOponent) {
+				await new Promise((resolve) => {
+					const handleMessage = async (event) => {
+						const data = JSON.parse(event.data);
+						if (data.type === "containerClosed") {
+								resolve(true);
+						}
+					}
+					socket.addEventListener('message', handleMessage);
+				});
+				
+				return
+			}
 			let container = new CardContainer();
 			container.cards = card.holder.opponent().hand.findCardsRandom(() => true, 3);
 			Carousel.curr.cancel();
@@ -239,9 +264,16 @@ var ability_dict = {
 			if (grave.findCards(c => c.isUnit()).length === 0)
 				return;
 			if (card.holder.controller instanceof ControllerOponent) {
-				let newCard = card.holder.controller.medic(card, grave);
-				newCard.holder = card.holder;
-				await board.toHand(newCard, grave);
+				await new Promise((resolve) => {
+					const handleMessage = async (event) => {
+						const data = JSON.parse(event.data);
+						if (data.type === "drawToBoard") {
+								resolve(true);
+						}
+					}
+					socket.addEventListener('message', handleMessage);
+				});
+
 				return;
 			}
 			Carousel.curr.cancel();
@@ -267,7 +299,7 @@ var ability_dict = {
 		description: "Restore a card from your discard pile to your hand.",
 		activated: async card => {
 			let newCard;
-			if (card.holder.controller instanceof ControllerOponent) {
+			if (card.holder.controller instanceof ControllerAI) {
 				newCard = card.holder.controller.medic(card, card.holder.grave)
 			} else {
 				Carousel.curr.exit();
@@ -284,9 +316,31 @@ var ability_dict = {
 			let hand = board.getRow(card, "hand", card.holder);
 			let deck = board.getRow(card, "deck", card.holder);
 			if (card.holder.controller instanceof ControllerOponent) {
-				let cards = card.holder.controller.discardOrder(card).splice(0,2).filter(c => c.basePower < 7);
-				await Promise.all(cards.map(async c => await board.toGrave(c, card.holder.hand)));
-				card.holder.deck.draw(card.holder.hand);
+				// Wait for the opponent to choose which cards to discard and play
+				await new Promise((resolve) => {
+					let flag = 0;
+					const handleMessage = async (event) => {
+						const data = JSON.parse(event.data);
+						console.log("flag = " + flag)
+						if (data.type === "removeCardHand") {
+							const card = hand.cards[data.index];
+							hand.removeCard(card);
+							flag+=1;
+						}
+						if (data.type === "addCardHand") {
+							const drawnCard = player_op.deck.cards[data.index];
+							hand.addCard(drawnCard);
+							flag+=1;
+						}
+
+						if (flag === 3) {
+							socket.removeEventListener('message', handleMessage);
+							resolve(true);
+						}
+					}
+					socket.addEventListener('message', handleMessage);
+				});
+
 				return;
 			} else
 				Carousel.curr.exit();
@@ -304,8 +358,23 @@ var ability_dict = {
 		description: "Pick any weather card from your deck and play it instantly.",
 		activated: async card => {
 			let deck = board.getRow(card, "deck", card.holder);
+
+			// Wait for the opponent to choose which weather card to play
 			if (card.holder.controller instanceof ControllerOponent) {
-				await ability_dict["eredin_king"].helper(card).card.autoplay(card.holder.deck);
+				const card = await new Promise((resolve) => {
+					const handleMessage = async (event) => {
+						const data = JSON.parse(event.data);
+						if (data.type === "weatherDraw") {
+							const drawnCard = deck.cards.filter(c => c.faction === "weather")[data.index]
+							if (drawnCard) {
+								socket.removeEventListener('message', handleMessage);
+								resolve(drawnCard);
+							}
+						}
+					}
+					socket.addEventListener('message', handleMessage);
+				});
+				board.toWeather(card, deck);
 			} else {
 				Carousel.curr.cancel();
 				await ui.queueCarousel(deck, 1, (c,i) => board.toWeather(c.cards[i], deck), c => c.faction === "weather", true);

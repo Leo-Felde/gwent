@@ -1558,7 +1558,9 @@ class UI {
 	// Displays a cancellable Carousel for all cards in a container
 	async viewCardsInContainer(container, action) {
 		action = action ? action : function() { return this.cancel();};
+
 		await this.queueCarousel(container, 1, action, () => true, false, true);
+		socket.send(JSON.stringify({ type: "containerClosed" }));
 	}
 	
 	// Displays a Carousel menu of filtered container items that match the predicate.
@@ -1737,6 +1739,27 @@ class Carousel {
 			this.elem.classList.add("hide");
 		if (this.count <= 0)
 			ui.enablePlayer(false);
+	
+		console.log(this.action)
+		const actionString = this.action.toString()
+		if (actionString === "(c, i) => wrapper.card=c.cards[i]") {
+			setTimeout(() => {
+				socket.send(JSON.stringify({ type: "medicDraw", index: this.index }));
+			}, 1000);
+		} else if (actionString.includes("board.toWeather")) {
+			setTimeout(() => {
+				socket.send(JSON.stringify({ type: "weatherDraw", index: this.index }));
+			}, 1000);
+		} else if (actionString.includes("board.toGrave")) {
+			setTimeout(() => {
+				socket.send(JSON.stringify({ type: "removeCardHand", index: this.index }));
+			}, 1000);
+		} else if (actionString.includes("board.toHand")) {
+			setTimeout(() => {
+				socket.send(JSON.stringify({ type: "addCardHand", index: this.index }));
+			}, 1000);
+		}
+
 		await this.action(this.container, this.indices[this.index]);
 		if (this.isLastSelection() && !this.cancelled)
 			return this.exit();
