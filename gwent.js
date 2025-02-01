@@ -1043,6 +1043,8 @@ class Game {
 	
 	// Initializes player abilities, hands and waits for cointoss
 	async startGame() {
+		ui.toggleMusic_elem.style.left = "26vw"
+
 		ui.toggleMusic_elem.classList.remove("music-customization");
 		this.currPlayer = player_me;
 		this.initPlayers(player_me, player_op);
@@ -1230,6 +1232,7 @@ class Game {
 	
 	// Returns the client to the deck customization screen
 	returnToCustomization(){
+		ui.toggleMusic_elem.style.left = "20.5vw"
 		this.reset();
 		player_me.reset();
 		player_op.reset();
