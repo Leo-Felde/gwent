@@ -91,7 +91,7 @@ socket.onmessage = async(event) => {
 					await  player_op.playScorch(card);
 				else
 					await player_op.playCardToRow(card, row);
-					break;
+				break;
 
 			// Game - Oponent pass
 			case "pass":
@@ -1027,8 +1027,7 @@ class Game {
 		}));
 		
 		await this.runEffects(this.gameStart);
-		if (player_op.deck.faction === "scoiatael" && !player_me.deck.faction === "scoiatael") {
-			console.log("waiting for scoiatael to decide who goes first")
+		if (player_op.deck.faction === "scoiatael" && player_me.deck.faction !== "scoiatael") {
 			await new Promise((resolve) => {
 				const handleMessage = async (event) => {
 					const data = JSON.parse(event.data);
@@ -1037,6 +1036,7 @@ class Game {
 						console.log(data)
 						const player = data.first === "me" ? player_op : player_me;
 						console.log("scoiatel decidiu que " + data.first === "me" ? 'ele vai primeiro' : 'eu vou primeiro')
+						console.log(`data.first = ${data.first}`)
 						game.firstPlayer = player;
 						game.currPlayer = player;
 						socket.removeEventListener('message', handleMessage);
@@ -1047,6 +1047,10 @@ class Game {
 			});
 
 			socket.send(JSON.stringify({ type: 'gameStart' }));
+			await this.initialRedraw();
+		} else if (player_me.deck.faction === "scoiatael" && player_op.deck.faction !== "scoiatael") {
+			socket.send(JSON.stringify({ type: 'gameStart' }));
+	
 			await this.initialRedraw();
 		} else {
 			socket.send(JSON.stringify({ type: 'gameStart' }));
@@ -1557,7 +1561,6 @@ class UI {
 	
 	// Displayed a timed notification to the client
 	async notification(name, duration){
-		console.log(`display notification ${name} for ${duration}ms`)
 		if (!duration)
 			duration = 1200;
 
