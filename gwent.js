@@ -1742,7 +1742,7 @@ class Carousel {
 	
 		console.log(this.action)
 		const actionString = this.action.toString()
-		if (actionString === "(c, i) => wrapper.card=c.cards[i]") {
+		if (actionString === "(c, i) => wrapper.card=c.cards[i]" || actionString === "(c,i) => newCard = c.cards[i]") {
 			setTimeout(() => {
 				socket.send(JSON.stringify({ type: "medicDraw", index: this.index }));
 			}, 1000);
@@ -2212,8 +2212,8 @@ async function translateTo(card, container_source, container_dest){
 	let elem = card.elem;
 	let source = !container_source ? card.elem : getSourceElem(card, container_source, container_dest);
 	let dest = getDestinationElem(card, container_source, container_dest);
-	// if (!isInDocument(elem))
-	// 	source.appendChild(elem);
+	if (!isInDocument(elem))
+		source.appendChild(elem);
 	let x = trueOffsetLeft(dest) - trueOffsetLeft(elem) +dest.offsetWidth/2 - elem.offsetWidth;
 	let y = trueOffsetTop(dest) - trueOffsetTop(elem) +dest.offsetHeight/2 - elem.offsetHeight/2;
 	if (container_dest instanceof Row && container_dest.cards.length !== 0 && !card.isSpecial() ){
@@ -2231,7 +2231,7 @@ async function translateTo(card, container_source, container_dest){
 	
 	// Returns true if the element is visible in the viewport
 	function isInDocument(elem){
-		if (!elem || !elem.getBoundingClientRect) return false
+		// if (!elem || !elem.getBoundingClientRect) return false
 		return elem.getBoundingClientRect().width !== 0;
 	}
 	
@@ -2261,7 +2261,7 @@ async function translateTo(card, container_source, container_dest){
 	function getDestinationElem(card, source, dest){
 		if (dest instanceof HandOponent)
 			return dest.hidden_elem;
-		if (card?.isSpecial && dest instanceof Row)
+		if (card.isSpecial() && dest instanceof Row)
 			return dest.elem_special;
 		if (dest instanceof Row || dest instanceof Hand || dest instanceof Weather){
 			if (dest.cards.length === 0)
