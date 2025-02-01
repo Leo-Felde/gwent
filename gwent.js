@@ -3,7 +3,7 @@
 class Controller {}
 
 // Websocket and Server config
-const socket = new WebSocket('ws://localhost:8080');
+const socket = new WebSocket('https://chip-vaulted-plastic.glitch.me');
 let amReady = false;
 let oponentReady = false;
 let playerId = null;
