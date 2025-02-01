@@ -62,6 +62,7 @@ socket.onmessage = async(event) => {
 				console.log("---------------------")
 				console.log("Match start")
 				game.startRound()
+				tocar("game_start", false);
 				break;
 
 			// Game - Oponent plays card
@@ -222,6 +223,10 @@ class Player {
 	
 	// Plays a card to a specific row
 	async playCardToRow(card, row){
+		// try {
+		// 	cartaNaLinha(row.elem.id, card);
+		// } catch (err) { }
+
 		await this.playCardAction(card, async () => await board.moveTo(card, row, this.hand));
 	}
 	
@@ -536,8 +541,9 @@ class Deck extends CardContainer {
 	}
 	
 	// Sends the top card from the Deck to the Hand
-	async draw(hand){
+	async draw(hand) {
 		let drawnCard = null
+		tocar("game_buy", false);
 		if (hand === player_op.hand) {
 			drawnCard = this.removeCard(0)
 			hand.addCard(drawnCard);
@@ -630,6 +636,13 @@ class Row extends CardContainer {
 		this.effects = { weather:false, bond: {}, morale: 0, horn: 0, mardroeme: 0 };
 		this.elem.addEventListener("click", () => ui.selectRow(this), true);
 		this.elem_special.addEventListener("click", () => ui.selectRow(this), false, true);
+		this.elem.addEventListener("mouseover", function() {
+				tocar("card", false);
+				this.style.boxShadow = "0 0 1.5vw #6d5210";
+		});
+		this.elem.addEventListener("mouseout", function() {
+			this.style.boxShadow = "0 0 0 #6d5210"
+		});
 	}
 	
 	// Override
@@ -693,6 +706,8 @@ class Row extends CardContainer {
 	
 	// Activates weather effect and visuals
 	addOverlay(overlay){
+		var som = overlay == "fog" || overlay == "rain" ? overlay : overlay == "frost" ? "cold" : "";
+		if (som != "") tocar(som, false);
 		this.effects.weather = true;
 		this.elem_parent.getElementsByClassName("row-weather")[0].classList.add(overlay);
 		this.updateScore();
@@ -824,6 +839,7 @@ class Weather extends CardContainer {
 		card.elem.classList.add("noclick");
 		if (card.name === "Clear Weather"){
 			// TODO Sunlight animation
+			tocar("clear", false);
 			await sleep(500);
 			this.clearWeather();
 		} else {
@@ -894,6 +910,7 @@ class Board {
 	
 	// Sends and translates a card from the source to the Deck of the card's holder
 	async toDeck(card, source){
+		tocar("discard", false);
 		await this.moveTo(card, "deck", source);
 	}
 	
@@ -922,6 +939,10 @@ class Board {
 	async moveTo(card, dest, source) {
 		if (isString(dest))
 			dest = this.getRow(card, dest);
+
+		try {
+			cartaNaLinha(dest.elem.id, card);
+		} catch(err) {}
 		await translateTo(card, source ? source : null, dest);
 		await dest.addCard(source ? source.removeCard(card) : card);
 	}
@@ -929,6 +950,9 @@ class Board {
 	// Sends and translates a card from the source to a row name associated with the passed player
 	async addCardToRow(card, row_name, player, source) {
 		let row = this.getRow(card, row_name, player);
+		try {
+			cartaNaLinha(row.elem.id, card);
+		} catch(err) {}
 		await translateTo(card, source, row);
 		await row.addCard(card);
 	}
@@ -1019,6 +1043,7 @@ class Game {
 	
 	// Initializes player abilities, hands and waits for cointoss
 	async startGame() {
+		ui.toggleMusic_elem.classList.remove("music-customization");
 		this.currPlayer = player_me;
 		this.initPlayers(player_me, player_op);
 		await Promise.all([...Array(10).keys()].map( async () => {
@@ -1027,6 +1052,7 @@ class Game {
 		}));
 		
 		await this.runEffects(this.gameStart);
+		tocar("game_opening", false);
 		if (player_op.deck.faction === "scoiatael" && player_me.deck.faction !== "scoiatael") {
 			await new Promise((resolve) => {
 				const handleMessage = async (event) => {
@@ -1120,7 +1146,6 @@ class Game {
 			this.currPlayer = this.currPlayer.opponent();
 			ui.notification(this.currPlayer.tag + "-turn", 1200);
 		}
-
 		ui.enablePlayer(this.currPlayer === player_me);
 		this.currPlayer.startTurn();
 	}
@@ -1188,11 +1213,14 @@ class Game {
 		
 		endScreen.children[0].className = "";
 		if (player_op.health <= 0 && player_me.health <= 0) {
+			tocar("");
 			endScreen.getElementsByTagName("p")[0].classList.remove("hide");
 			endScreen.children[0].classList.add("end-draw");
 		} else if (player_op.health === 0){
+			tocar("game_win", true);
 			endScreen.children[0].classList.add("end-win");
 		} else {
+			endScreen.children[0].classList.add("end-lose");
 			endScreen.children[0].classList.add("end-lose");
 		}
 		
@@ -1205,6 +1233,7 @@ class Game {
 		this.reset();
 		player_me.reset();
 		player_op.reset();
+		ui.toggleMusic_elem.classList.add("music-customization");
 		this.endScreen.classList.add("hide");
 		document.getElementById("deck-customization").classList.remove("hide");
 	}
@@ -1308,6 +1337,18 @@ class Card {
 	
 	// Animates an ability effect
 	async animate(name, bFade = true, bExpand = true) {
+		var guia = {
+			"medic" : "med",
+			"muster" : "ally",
+			"morale" : "moral",
+			"bond" : "moral"
+		}
+		var temSom = new Array();
+		for (var x in guia) temSom[temSom.length] = x;
+		var literais = ["scorch", "spy", "horn", "shield", "lock", "seize", "knockback", "resilience"];
+		var som = literais.indexOf(name) > -1 ? literais[literais.indexOf(name)] : temSom.indexOf(name) > -1 ? guia[name] : "";
+		if (som != "") tocar(som, false);
+
 		if (name === "scorch") {
 			return await this.scorch(name);
 		}
@@ -1437,11 +1478,72 @@ class UI {
 			player_me.passRound();
 		});
 		document.getElementById("click-background").addEventListener("click", () => ui.cancel(), false);
+		this.youtube;
+		this.ytActive;
+		this.toggleMusic_elem = document.getElementById("toggle-music");
+		this.toggleMusic_elem.classList.add("fade");
+		this.toggleMusic_elem.addEventListener("click", () => this.toggleMusic(), false);
 	}
 	
 	enablePlayer(enable){
 		let main = document.getElementsByTagName("main")[0].classList;
 		if (enable) main.remove("noclick"); else main.add("noclick");
+	}
+
+	// Initializes the youtube background music object
+	initYouTube() {
+		this.youtube = new YT.Player('youtube', {
+			videoId: "UE9fPWy1_o4",
+			playerVars: {
+				"autoplay": 1,
+				"controls": 0,
+				"loop": 1,
+				"playlist": "UE9fPWy1_o4",
+				"rel": 0,
+				"version": 3,
+				"modestbranding": 1
+			},
+			events: {
+				'onStateChange': initButton
+			}
+		});
+		console.log("initYouTube")
+		console.log(this.youtube)
+
+		function initButton() {
+			if (ui.ytActive !== undefined)
+				return;
+			ui.ytActive = true;
+			ui.youtube.playVideo();
+			let timer = setInterval(() => {
+				if (ui.youtube.getPlayerState() !== YT.PlayerState.PLAYING)
+					ui.youtube.playVideo();
+				else {
+					clearInterval(timer);
+					ui.toggleMusic_elem.classList.remove("fade");
+				}
+			}, 500);
+		}
+	}
+
+	// Called when client toggles the music
+	toggleMusic() {
+		if (this.youtube.getPlayerState() !== YT.PlayerState.PLAYING) iniciarMusica();
+		else {
+			this.youtube.pauseVideo();
+			this.toggleMusic_elem.classList.add("fade");
+		}
+	}
+
+	// Enables or disables backgorund music 
+	setYouTubeEnabled(enable) {
+		if (this.ytActive === enable)
+			return;
+		if (enable && !this.mute)
+			ui.youtube.playVideo();
+		else
+			ui.youtube.pauseVideo();
+		this.ytActive = enable;
 	}
 	
 	// Called when the player selects a selectable card
@@ -1505,11 +1607,13 @@ class UI {
 	
 	// Called when the client cancels out of a card-preview
 	cancel(){
+		tocar("discard", false);
 		this.hidePreview();
 	}
 	
 	// Displays a card preview then enables and highlights potential card destinations
 	showPreview(card) {
+		tocar("explaining", false);
 		this.showPreviewVisuals(card);
 		this.setSelectable(card, true);
 		document.getElementById("click-background").classList.remove("noclick");
@@ -1565,6 +1669,51 @@ class UI {
 			duration = 1200;
 
 		duration = Math.max(800, duration);
+
+		var guia1 = {
+			"notif-nilfgaard-wins-draws": "Nilfgaard wins draws",
+			"notif-op-white-flame": "The opponent's leader cancel your opponent's Leader Ability",
+			"notif-op-leader": "Opponent uses leader",
+			"notif-me-first": "You will go first",
+			"notif-op-first": "Your opponent will go first",
+			"notif-me-coin": "You will go first",
+			"notif-op-coin": "Your opponent will go first",
+			"notif-round-start": "Round Start",
+			"notif-me-pass": "Round passed",
+			"notif-op-pass": "Your opponent has passed",
+			"notif-win-round": "You won the round!",
+			"notif-lose-round": "Your opponent won the round",
+			"notif-draw-round": "The round ended in a draw",
+			"notif-me-turn": "Your turn!",
+			"notif-op-turn": "Opponent's turn",
+			"notif-north": "Northern Realms faction ability triggered - North draws an additional card.",
+			"notif-monsters": "Monsters faction ability triggered - one randomly-chosen Monster Unit Card stays on the board",
+			"notif-scoiatael": "Opponent used the Scoia'tael faction perk to go first.",
+			"notif-skellige-op": "Opponent Skellige Ability Triggered!",
+			"notif-skellige-me": "Skellige Ability Triggered!",
+			"notif-witcher_universe": "Witcher Universe used its faction ability and skipped a turn",
+			"notif-toussaint": "Toussaint faction ability triggered - Toussaint draws an additional card.",
+			"notif-toussaint-decoy-cancelled": "Toussaint Leader ability used - Decoy ability cancelled for the rest of the round.",
+			"notif-lyria_rivia": "Lyria & Rivia ability used - Morale Boost effect applied to a row.",
+			"notif-meve_white_queen": "Lyria & Rivia leader allows both players to restore 2 units when using the medic ability.",
+            "notif-north-scorch-cancelled": "Northern Realms Leader ability used - Scorch ability cancelled for the rest of the round.",
+            "notif-zerrikania": "Zerrikania ability used - Unit restored from discard pile.",
+		}
+		var guia2 = {
+			"me-pass" : "pass",
+			"win-round" : "round_win",
+			"lose-round" : "round_lose",
+			"me-turn" : "turn_me",
+			"op-turn" : "turn_op",
+			"op-leader" : "turn_op",
+			"op-white-flame" : "turn_op",
+			"nilfgaard-wins-draws" : "turn_op"
+		}
+		var temSom = new Array();
+		for (var x in guia2) temSom[temSom.length] = x;
+		var som = temSom.indexOf(name) > -1 ? guia2[name] : name == "round-start" && game.roundHistory.length == 0 ? "round1_start" : "";
+		if (som != "") tocar(som, false);
+
 		const fadeSpeed = 150;
 		this.notif_elem.children[0].id = "notif-" + name;
 		await fadeIn(this.notif_elem, fadeSpeed);
@@ -1748,6 +1897,7 @@ class Carousel {
 		
 		this.elem.classList.remove("hide");
 		ui.enablePlayer(true);
+		tocar("explaining", false);
 	}
 	
 	// Called by the client to cycle cards displayed by n
@@ -1768,6 +1918,7 @@ class Carousel {
 	
 		console.log(this.action)
 		const actionString = this.action.toString()
+		tocar("redraw", false);
 		if (actionString === "(c, i) => wrapper.card=c.cards[i]" || actionString === "(c,i) => newCard = c.cards[i]") {
 			setTimeout(() => {
 				socket.send(JSON.stringify({ type: "medicDraw", index: this.index }));
@@ -1796,6 +1947,7 @@ class Carousel {
 	cancel(){
 		if (this.bExit){
 			this.cancelled = true;
+			tocar("discard", false);
 			this.exit();
 		}
 		ui.enablePlayer(true);
@@ -1917,7 +2069,8 @@ class DeckMaker {
 		document.getElementById("download-deck").addEventListener("click", () => this.downloadDeck(), false);
 		document.getElementById("add-file").addEventListener("change", () => this.uploadDeck(), false);
 		startButtonElem.addEventListener("click", () => this.startNewGame(), false);
-
+		somCarta();
+		
 		this.update();
 	}
 	
@@ -1925,8 +2078,13 @@ class DeckMaker {
 	setFaction(faction_name, silent){
 		if (!silent && this.faction === faction_name)
 			return false;
-		if (!silent && !confirm("Changing factions will clear the current deck. Continue? "))
-			return false;
+		if (!silent) {
+			tocar("warning", false);
+			if (!confirm("Changing factions will clear the current deck. Continue? ")) {
+				tocar("warning", false);
+				return false;
+			}
+		}
 		this.elem.getElementsByTagName("h1")[0].innerHTML = factions[faction_name].name;
 		this.elem.getElementsByTagName("h1")[0].style.backgroundImage = iconURL("deck_shield_" + faction_name);
 		document.getElementById("faction-description").innerHTML = factions[faction_name].description;
@@ -1939,6 +2097,9 @@ class DeckMaker {
 			this.leader_elem.children[1].style.backgroundImage = largeURL(this.leader.card.deck + "_" + this.leader.card.filename);
 		}
 		this.faction = faction_name;
+		setTimeout(function() {
+			somCarta();
+		}, 300);
 		return true;
 	}
 	
@@ -2077,9 +2238,11 @@ class DeckMaker {
 	// Called when client selects s a preview card. Moves it from bank to deck or vice-versa then updates;
 	select(index, isBank){
 		if (isBank) {
+			tocar("menu_buy", false);
 			this.add(index, this.deck);
 			this.remove(index, this.bank);
 		} else {
+			tocar("discard", false);
 			this.add(index, this.bank);
 			this.remove(index, this.deck);
 		}
@@ -2257,7 +2420,6 @@ async function translateTo(card, container_source, container_dest){
 	
 	// Returns true if the element is visible in the viewport
 	function isInDocument(elem){
-		// if (!elem || !elem.getBoundingClientRect) return false
 		return elem.getBoundingClientRect().width !== 0;
 	}
 	
@@ -2468,14 +2630,107 @@ function createCardElement(card){
 	return elem;
 }
 
+
+function somCarta() {
+	var classes = ["card", "card-lg"];
+	for (var i = 0; i < classes.length; i++) {
+		var cartas = document.getElementsByClassName(classes[i]);
+		for (var j = 0; j < cartas.length; j++) {
+			if (cartas[j].id != "no_sound" && cartas[j].id != "no_hover") cartas[j].addEventListener("mouseover", function() {
+				tocar("card", false);
+			});
+		}
+	}
+	var tags = ["label", "a", "button"];
+	for (var i = 0; i < tags.length; i++) {
+		var rec = document.getElementsByTagName(tags[i]);
+		for (var j = 0; j < rec.length; j++) rec[j].addEventListener("mouseover", function() {
+			tocar("card", false);
+		});
+	}
+	var ids = ["pass-button", "toggle-music"];
+	for (var i = 0; i < ids.length; i++) document.getElementById(ids[i]).addEventListener("mouseover", function() {
+		tocar("card", false);
+	});
+}
+
+var lastSound = "";
+
+function tocar(arquivo, pararMusica) {
+	if (arquivo != lastSound && arquivo != "") {
+		var s = new Audio("sfx/" + arquivo + ".mp3");
+        if (pararMusica && ui.youtube && ui.youtube.getPlayerState() === YT.PlayerState.PLAYING) {
+			ui.youtube.pauseVideo();
+			ui.toggleMusic_elem.classList.add("fade");
+		}
+		lastSound = arquivo;
+		s.play();
+		setTimeout(function() {
+			lastSound = "";
+		}, 50);
+	}
+}
+
 /*----------------------------------------------------*/
 
+function onYouTubeIframeAPIReady() {
+	ui.initYouTube();
+}
+
+function iniciarMusica() {
+	try {
+		if (ui.youtube.getPlayerState() !== YT.PlayerState.PLAYING) {
+			ui.youtube.playVideo();
+			ui.toggleMusic_elem.classList.remove("fade");
+		}
+	} catch(err) {}
+}
+
+
 var ui = new UI();
+
+const startButtonElem = document.getElementById("start-game");
+
 var board = new Board();
 var weather = new Weather();
 var game = new Game();
 var player_me, player_op;
-const startButtonElem = document.getElementById("start-game");
 
 ui.enablePlayer(false);
 let dm = new DeckMaker();
+
+function cartaNaLinha(id, carta) {
+	if (id.charAt(0) == "f") {
+		if (!carta.hero) {
+			if (carta.name != "Decoy") {
+				var linha = parseInt(id.charAt(1));
+				if (linha == 1 || linha == 6) tocar("common3", false);
+				else if (linha == 2 || linha == 5) tocar("common2", false);
+				else if (linha == 3 || linha == 4) tocar("common1", false);
+			} else tocar("menu_buy", false);
+		} else tocar("hero", false);
+	}
+}
+
+function inicio() {
+	var classe = document.getElementsByClassName("abs");
+	for (var i = 0; i < classe.length; i++) classe[i].style.display = "none";
+	iniciou = true;
+	tocar("menu_opening", false);
+	openFullscreen();
+	iniciarMusica();
+}
+
+var iniciou = false, isLoaded = false;
+window.onload = function() {
+
+	document.getElementById("load_text").style.display = "none";
+	document.getElementById("button_start").style.display = "inline-block";
+	document.getElementById("deck-customization").style.display = "";
+	document.getElementById("toggle-music").style.display = "";
+	document.getElementsByTagName("main")[0].style.display = "";
+	document.getElementById("button_start").addEventListener("click", function() {
+		inicio();
+    });
+	isLoaded = true;
+}
