@@ -63,6 +63,7 @@ socket.onmessage = async(event) => {
 				console.log("Match start")
 				game.startRound()
 				tocar("game_start", false);
+				somCarta();
 				break;
 
 			// Game - Oponent plays card
@@ -637,8 +638,10 @@ class Row extends CardContainer {
 		this.elem.addEventListener("click", () => ui.selectRow(this), true);
 		this.elem_special.addEventListener("click", () => ui.selectRow(this), false, true);
 		this.elem.addEventListener("mouseover", function() {
+			if (hover_row) {
 				tocar("card", false);
 				this.style.boxShadow = "0 0 1.5vw #6d5210";
+			}
 		});
 		this.elem.addEventListener("mouseout", function() {
 			this.style.boxShadow = "0 0 0 #6d5210"
@@ -1468,6 +1471,7 @@ class Card {
 	}
 }
 
+var hover_row = true
 // Handles notifications and client interration with menus
 class UI {
 	constructor() {
@@ -1790,7 +1794,16 @@ class UI {
 				row.elem.classList.add("noclick");
 				row.elem_special.classList.add("noclick");
 			}
+
 			weather.elem.classList.add("row-selectable");
+
+			document.getElementById("field-op").addEventListener("click",function() {
+				cancelaClima();
+			});
+			document.getElementById("field-me").addEventListener("click",function() {
+				cancelaClima();
+			});
+
 			return;
 		}
 		
@@ -2724,6 +2737,16 @@ function inicio() {
 	tocar("menu_opening", false);
 	openFullscreen();
 	iniciarMusica();
+}
+
+function cancelaClima() {
+	if (carta_c) {
+		ui.cancel();
+		hover_row = false;
+		setTimeout(function() {
+			hover_row = true;
+		}, 100);
+	}
 }
 
 var iniciou = false, isLoaded = false;
