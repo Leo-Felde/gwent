@@ -1,7 +1,15 @@
 # gwent-classic
 ![cover](https://user-images.githubusercontent.com/26311830/116256903-f1599b00-a7b6-11eb-84a1-16dcb5c9bfc6.jpg)
 
-This is a **multiplayer-only** fork using node.js for the server.
+This is a **multiplayer-only** fork using node.js for the server. Although I have not tested it extensevely, the server *should* allow for multiple simultaneous games.
+
+Decoys, Spies, most of the leader's abilities and medics respawning medics respawning whatever seem to all be working properly.
+
+#### Known issues:
+<ul>
+  <li>None so far, please open issues as you encounter then.</li>
+</ul>  
+
 
 ## How to run server
 These are the instructions to run a server, if you're just going to connect, ignore this part.
@@ -44,4 +52,4 @@ Ai has been completely disabled in this fork. To play against AI use the [origin
 You can select a faction to play as at the top of the screen and then add and remove cards from your deck by clicking on the cards in either scroll-down menu. You can also pick a leader card by selecting the current leader and scrolling through the options for that faction. At the top of the screen there are buttons to upload and download decks to play with. These are stored in json format and are checked to see if they comply with their assigned faction and maximum card counts.
 
 #### Music tracks
-There are no music tracks in this fork. I have decided to remove then because they were causing many issues and making debugging harder.
+Besides The gwent music tracks streamed from YouTube togglable by pressing the music icon in the center of the customization screen or the bottom-left of the game screen, There are also **general sound effects** related to cards and their effects which were taken from [RandomPianist's fork](https://github.com/RandomPianist).
