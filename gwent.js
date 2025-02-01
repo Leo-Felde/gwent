@@ -3,7 +3,7 @@
 class Controller {}
 
 // Websocket and Server config
-const socket = new WebSocket('https://chip-vaulted-plastic.glitch.me');
+const socket = new WebSocket('ws://localhost:8080');
 let amReady = false;
 let oponentReady = false;
 let playerId = null;
@@ -1919,28 +1919,30 @@ class Carousel {
 		if (this.count <= 0)
 			ui.enablePlayer(false);
 	
-		console.log(this.action)
 		const actionString = this.action.toString()
 		tocar("redraw", false);
+		const resp = await this.action(this.container, this.indices[this.index]);
 		if (actionString === "(c, i) => wrapper.card=c.cards[i]" || actionString === "(c,i) => newCard = c.cards[i]") {
 			setTimeout(() => {
-				socket.send(JSON.stringify({ type: "medicDraw", index: this.index }));
+				console.log("Send socket message 'medicDraw'")
+				socket.send(JSON.stringify({ type: "medicDraw", card: resp.filename }));
 			}, 1000);
 		} else if (actionString.includes("board.toWeather")) {
 			setTimeout(() => {
-				socket.send(JSON.stringify({ type: "weatherDraw", index: this.index }));
+				console.log("Send socket message 'weatherDraw'")
+				socket.send(JSON.stringify({ type: "weatherDraw", card: resp.filename }));
 			}, 1000);
 		} else if (actionString.includes("board.toGrave")) {
 			setTimeout(() => {
+				console.log("Send socket message 'removeCardHand'")
 				socket.send(JSON.stringify({ type: "removeCardHand", index: this.index }));
 			}, 1000);
 		} else if (actionString.includes("board.toHand")) {
 			setTimeout(() => {
-				socket.send(JSON.stringify({ type: "addCardHand", index: this.index }));
+				console.log("Send socket message 'addCardHand'")
+				socket.send(JSON.stringify({ type: "addCardHand", index: this.index  }));
 			}, 1000);
 		}
-
-		await this.action(this.container, this.indices[this.index]);
 		if (this.isLastSelection() && !this.cancelled)
 			return this.exit();
 		this.update();

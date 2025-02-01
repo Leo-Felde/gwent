@@ -132,15 +132,16 @@ var ability_dict = {
 			if (game.randomRespawn) {
 				 wrapper.card = grave.findCardsRandom(c => c.isUnit())[0];
 			} else if (card.holder.controller instanceof ControllerOponent) {
+				console.log("Oponent has played a medic, wait for him to chose which card to respawn")
 				// Wait for the oponent to choose which card to revive
 				wrapper.card = await new Promise((resolve) => {
 					const handleMessage = async (event) => {
 						const data = JSON.parse(event.data);
 						if (data.type === "medicDraw") {
-							const drawnCard = grave.cards.filter(c => c.isUnit())[data.index]
+							const drawnCard = grave.cards.filter(c => c.filename === data.card)[0]
 							if (drawnCard) {
-								socket.removeEventListener('message', handleMessage);
 								resolve(drawnCard);
+								return;
 							}
 						}
 					}
@@ -153,6 +154,7 @@ var ability_dict = {
 			grave.addCard(res);
 			await res.animate("medic");
 			await res.autoplay(grave);
+			return
 		}
 	},
 	morale: {
@@ -274,7 +276,6 @@ var ability_dict = {
 						if (data.type === "addCardHand") {
 							const drawnCard = grave.cards.filter(c => c.isUnit())[data.index]
 							if (drawnCard) {
-								socket.removeEventListener('message', handleMessage);
 								drawnCard.holder = player_op;
 								resolve(drawnCard);
 							}
@@ -316,9 +317,8 @@ var ability_dict = {
 						const data = JSON.parse(event.data);
 
 						if (data.type === "medicDraw") {
-							const drawnCard = player_op.grave.cards.filter(c => c.isUnit())[data.index]
+							const drawnCard = player_op.grave.cards.filter(c => c.isUnit() && c.filename === data.card)[0]
 							if (drawnCard) {
-								socket.removeEventListener('message', handleMessage);
 								resolve(drawnCard);
 							}
 						}
@@ -357,7 +357,6 @@ var ability_dict = {
 						}
 
 						if (flag === 3) {
-							socket.removeEventListener('message', handleMessage);
 							resolve(true);
 						}
 					}
@@ -388,9 +387,8 @@ var ability_dict = {
 					const handleMessage = async (event) => {
 						const data = JSON.parse(event.data);
 						if (data.type === "weatherDraw") {
-							const drawnCard = deck.cards.filter(c => c.faction === "weather")[data.index]
+							const drawnCard = deck.cards.filter(c => c.faction === "weather" && c.filename === data.card)[0]
 							if (drawnCard) {
-								socket.removeEventListener('message', handleMessage);
 								resolve(drawnCard);
 							}
 						}
