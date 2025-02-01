@@ -283,7 +283,7 @@ var ability_dict = {
 					}
 					socket.addEventListener('message', handleMessage);
 				});
-
+				newCard.holder = player_op;
 				board.toHand(newCard, grave);
 				return;
 			}
