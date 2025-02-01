@@ -1027,11 +1027,34 @@ class Game {
 		}));
 		
 		await this.runEffects(this.gameStart);
-		socket.send(JSON.stringify({ type: 'gameStart' }));
+		if (player_op.deck.faction === "scoiatael") {
+			console.log("waiting for scoiatael to decide who goes first")
+			await new Promise((resolve) => {
+				const handleMessage = async (event) => {
+					const data = JSON.parse(event.data);
 
-		await this.coinToss();
-		await this.initialRedraw();
-		// game.startRound();
+					if (data.type === "scoiataelStart") {
+						console.log(data)
+						const player = data.first === "me" ? player_op : player_me;
+						console.log("scoiatel decidiu que " + data.first === "me" ? 'ele vai primeiro' : 'eu vou primeiro')
+						game.firstPlayer = player;
+						game.currPlayer = player;
+						socket.removeEventListener('message', handleMessage);
+						resolve(true);
+					}
+				}
+				socket.addEventListener('message', handleMessage);
+			});
+
+			socket.send(JSON.stringify({ type: 'gameStart' }));
+			await this.initialRedraw();
+		} else {
+			socket.send(JSON.stringify({ type: 'gameStart' }));
+			if (!player_me.deck.faction === "scoiatael") {
+				await this.coinToss();
+			}
+			await this.initialRedraw();
+		}
 	}
 	
 	// Determines who starts first
@@ -1045,7 +1068,6 @@ class Game {
 					
 					game.firstPlayer = player;
 					game.currPlayer = player;
-					console.log(`Coin toss result: ${data.player === playerId ? 'you' : 'oponnent'} will go first`)
 					
 					socket.removeEventListener('message', handleMessage);
 					await ui.notification(game.firstPlayer.tag + "-coin", 1200);
@@ -1195,7 +1217,6 @@ class Game {
 	
 	// Executes effects in list. If effect returns true, effect is removed.
 	async runEffects(effects){
-		console.log("runEffects")
 		for (let i = effects.length - 1; i >= 0; --i){
 			let effect = effects[i];
 			if (await effect())
