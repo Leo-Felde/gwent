@@ -1232,6 +1232,9 @@ class Game {
 	
 	// Returns the client to the deck customization screen
 	returnToCustomization(){
+		socket.send(JSON.stringify({ type: "unReady" }));
+		amReady = false;
+		
 		ui.toggleMusic_elem.style.left = "20.5vw"
 		this.reset();
 		player_me.reset();
