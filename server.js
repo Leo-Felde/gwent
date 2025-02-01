@@ -3,8 +3,9 @@ const WebSocket = require('ws');
 const PORT = process.env.PORT || 8080;
 const wss = new WebSocket.Server({ port: PORT });
 
-let sessions = {}; // Stores active sessions with their codes
-let players = []; // Stores connected players
+let sessions = {};
+let players = [];
+let nextPlayerId = 1;
 
 // Helper function to generate a random 4-character code
 function generateCode() {
@@ -17,7 +18,7 @@ function generateCode() {
 }
 
 wss.on('connection', (ws) => {
-  ws.playerId = players.length + 1;
+  ws.playerId = nextPlayerId++;
   players.push(ws);
 
   // Send a welcome message with the player's ID
@@ -28,15 +29,13 @@ wss.on('connection', (ws) => {
     const data = JSON.parse(message);
 
     if (data.type === 'createSession') {
-      // Generate a unique 4-character code
       const sessionCode = generateCode();
       // Create a new session and auto-join the creator
       sessions[sessionCode] = { players: [ws], code: sessionCode, playersReady: 0 };
-      ws.sessionCode = sessionCode; // Store the session code on the WebSocket object
+      ws.sessionCode = sessionCode;
       ws.send(JSON.stringify({ type: 'sessionCreated', code: sessionCode }));
       console.log(`# Player ${ws.playerId} created Session ${sessionCode}`);
 
-      // Notify the creator that they are auto-joined
       ws.send(JSON.stringify({ type: 'sessionJoined', code: sessionCode }));
     }
 
@@ -59,7 +58,6 @@ wss.on('connection', (ws) => {
     if (data.type === 'joinSession') {
       const sessionCode = data.code;
       if (sessions[sessionCode] && sessions[sessionCode].players.length === 1) {
-        // Add the second player to the session
         sessions[sessionCode].players.push(ws);
         ws.sessionCode = sessionCode;
         ws.send(JSON.stringify({ type: 'sessionJoined', code: sessionCode }));
@@ -92,7 +90,7 @@ wss.on('connection', (ws) => {
     if (data.type === 'initial_reDraw') {
       if (ws.sessionCode && sessions[ws.sessionCode]) {
         const session = sessions[ws.sessionCode];
-        session.playersReady += 1; // Increment the ready counter for the session
+        session.playersReady += 1;
 
         console.log(`# Players ready in session ${ws.sessionCode}: ${session.playersReady}`);
 
