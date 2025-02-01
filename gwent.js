@@ -1027,7 +1027,7 @@ class Game {
 		}));
 		
 		await this.runEffects(this.gameStart);
-		if (player_op.deck.faction === "scoiatael") {
+		if (player_op.deck.faction === "scoiatael" && !player_me.deck.faction === "scoiatael") {
 			console.log("waiting for scoiatael to decide who goes first")
 			await new Promise((resolve) => {
 				const handleMessage = async (event) => {
@@ -1050,9 +1050,8 @@ class Game {
 			await this.initialRedraw();
 		} else {
 			socket.send(JSON.stringify({ type: 'gameStart' }));
-			if (!player_me.deck.faction === "scoiatael") {
-				await this.coinToss();
-			}
+			await this.coinToss();
+	
 			await this.initialRedraw();
 		}
 	}
