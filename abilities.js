@@ -310,6 +310,11 @@ var ability_dict = {
 		name: "Eredin : Bringer of Death",
 		description: "Restore a card from your discard pile to your hand.",
 		activated: async card => {
+			if (!card.holder.grave.cards.length) {
+				card.holder.tag === "me" ? player_me.endRound() : player_op.endRound()
+				return
+			}
+			
 			let newCard;
 			if (card.holder.controller instanceof ControllerOponent) {
 				newCard = await new Promise((resolve) => {
