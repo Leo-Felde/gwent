@@ -627,7 +627,7 @@ class Row extends CardContainer {
 		this.elem_special = elem.getElementsByClassName("row-special")[0];
 		this.special = null;
 		this.total = 0;
-		this.effects = {weather:false, bond: {}, morale: 0, horn: 0, mardroeme: 0};
+		this.effects = { weather:false, bond: {}, morale: 0, horn: 0, mardroeme: 0 };
 		this.elem.addEventListener("click", () => ui.selectRow(this), true);
 		this.elem_special.addEventListener("click", () => ui.selectRow(this), false, true);
 	}
@@ -681,7 +681,7 @@ class Row extends CardContainer {
 			switch (x) {
 				case "morale":
 				case "horn":
-				case "mardroeme": this.effects[x]+= activate ? 1 : -1; break;
+				case "mardroeme": this.effects[x] += activate ? 1 : -1; break;
 				case "bond": 
 					if (!this.effects.bond[card.id()])
 						this.effects.bond[card.id()] = 0;
@@ -1017,7 +1017,7 @@ class Game {
 		}
 	}
 	
-	// Sets initializes player abilities, player hands and redraw
+	// Initializes player abilities, hands and waits for cointoss
 	async startGame() {
 		this.currPlayer = player_me;
 		this.initPlayers(player_me, player_op);
@@ -1027,11 +1027,33 @@ class Game {
 		}));
 		
 		await this.runEffects(this.gameStart);
-		socket.send(JSON.stringify({ type: 'gameStart' }));
+		if (player_op.deck.faction === "scoiatael" && !player_me.deck.faction === "scoiatael") {
+			console.log("waiting for scoiatael to decide who goes first")
+			await new Promise((resolve) => {
+				const handleMessage = async (event) => {
+					const data = JSON.parse(event.data);
 
-		await this.coinToss();
-		await this.initialRedraw();
-		// game.startRound();
+					if (data.type === "scoiataelStart") {
+						console.log(data)
+						const player = data.first === "me" ? player_op : player_me;
+						console.log("scoiatel decidiu que " + data.first === "me" ? 'ele vai primeiro' : 'eu vou primeiro')
+						game.firstPlayer = player;
+						game.currPlayer = player;
+						socket.removeEventListener('message', handleMessage);
+						resolve(true);
+					}
+				}
+				socket.addEventListener('message', handleMessage);
+			});
+
+			socket.send(JSON.stringify({ type: 'gameStart' }));
+			await this.initialRedraw();
+		} else {
+			socket.send(JSON.stringify({ type: 'gameStart' }));
+			await this.coinToss();
+	
+			await this.initialRedraw();
+		}
 	}
 	
 	// Determines who starts first
@@ -1045,7 +1067,6 @@ class Game {
 					
 					game.firstPlayer = player;
 					game.currPlayer = player;
-					console.log(`Coin toss result: ${data.player === playerId ? 'you' : 'oponnent'} will go first`)
 					
 					socket.removeEventListener('message', handleMessage);
 					await ui.notification(game.firstPlayer.tag + "-coin", 1200);
@@ -1093,7 +1114,7 @@ class Game {
 		await this.runEffects(this.turnStart);
 		if (!this.currPlayer.opponent().passed){
 			this.currPlayer = this.currPlayer.opponent();
-			await ui.notification(this.currPlayer.tag + "-turn", 1200);
+			ui.notification(this.currPlayer.tag + "-turn", 1200);
 		}
 
 		ui.enablePlayer(this.currPlayer === player_me);
@@ -1195,7 +1216,7 @@ class Game {
 	
 	// Executes effects in list. If effect returns true, effect is removed.
 	async runEffects(effects){
-		for (let i=effects.length-1; i>=0; --i){
+		for (let i = effects.length - 1; i >= 0; --i){
 			let effect = effects[i];
 			if (await effect())
 				effects.splice(i,1)
@@ -1536,13 +1557,15 @@ class UI {
 	
 	// Displayed a timed notification to the client
 	async notification(name, duration){
+		console.log(`display notification ${name} for ${duration}ms`)
 		if (!duration)
 			duration = 1200;
-		duration = Math.max(400, duration);
+
+		duration = Math.max(800, duration);
 		const fadeSpeed = 150;
 		this.notif_elem.children[0].id = "notif-" + name;
-		fadeIn(this.notif_elem, fadeSpeed);
-		fadeOut(this.notif_elem, fadeSpeed, duration - fadeSpeed);
+		await fadeIn(this.notif_elem, fadeSpeed);
+		await fadeOut(this.notif_elem, fadeSpeed, duration - fadeSpeed);
 		await sleep(duration);
 	}
 	
@@ -1742,7 +1765,7 @@ class Carousel {
 	
 		console.log(this.action)
 		const actionString = this.action.toString()
-		if (actionString === "(c, i) => wrapper.card=c.cards[i]") {
+		if (actionString === "(c, i) => wrapper.card=c.cards[i]" || actionString === "(c,i) => newCard = c.cards[i]") {
 			setTimeout(() => {
 				socket.send(JSON.stringify({ type: "medicDraw", index: this.index }));
 			}, 1000);
@@ -2212,8 +2235,8 @@ async function translateTo(card, container_source, container_dest){
 	let elem = card.elem;
 	let source = !container_source ? card.elem : getSourceElem(card, container_source, container_dest);
 	let dest = getDestinationElem(card, container_source, container_dest);
-	// if (!isInDocument(elem))
-	// 	source.appendChild(elem);
+	if (!isInDocument(elem))
+		source.appendChild(elem);
 	let x = trueOffsetLeft(dest) - trueOffsetLeft(elem) +dest.offsetWidth/2 - elem.offsetWidth;
 	let y = trueOffsetTop(dest) - trueOffsetTop(elem) +dest.offsetHeight/2 - elem.offsetHeight/2;
 	if (container_dest instanceof Row && container_dest.cards.length !== 0 && !card.isSpecial() ){
@@ -2231,7 +2254,7 @@ async function translateTo(card, container_source, container_dest){
 	
 	// Returns true if the element is visible in the viewport
 	function isInDocument(elem){
-		if (!elem || !elem.getBoundingClientRect) return false
+		// if (!elem || !elem.getBoundingClientRect) return false
 		return elem.getBoundingClientRect().width !== 0;
 	}
 	
@@ -2261,7 +2284,7 @@ async function translateTo(card, container_source, container_dest){
 	function getDestinationElem(card, source, dest){
 		if (dest instanceof HandOponent)
 			return dest.hidden_elem;
-		if (card?.isSpecial && dest instanceof Row)
+		if (card.isSpecial() && dest instanceof Row)
 			return dest.elem_special;
 		if (dest instanceof Row || dest instanceof Hand || dest instanceof Weather){
 			if (dest.cards.length === 0)

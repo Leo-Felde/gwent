@@ -264,18 +264,26 @@ var ability_dict = {
 			if (grave.findCards(c => c.isUnit()).length === 0)
 				return;
 			if (card.holder.controller instanceof ControllerOponent) {
-				await new Promise((resolve) => {
+				const newCard = await new Promise((resolve) => {
 					const handleMessage = async (event) => {
 						const data = JSON.parse(event.data);
-						if (data.type === "drawToBoard") {
-								resolve(true);
+
+						if (data.type === "addCardHand") {
+							const drawnCard = grave.cards.filter(c => c.isUnit())[data.index]
+							if (drawnCard) {
+								socket.removeEventListener('message', handleMessage);
+								drawnCard.holder = player_op;
+								resolve(drawnCard);
+							}
 						}
 					}
 					socket.addEventListener('message', handleMessage);
 				});
 
+				board.toHand(newCard, grave);
 				return;
 			}
+
 			Carousel.curr.cancel();
 			await ui.queueCarousel(grave, 1, (c,i) => {
 				let newCard = c.cards[i];
@@ -299,8 +307,21 @@ var ability_dict = {
 		description: "Restore a card from your discard pile to your hand.",
 		activated: async card => {
 			let newCard;
-			if (card.holder.controller instanceof ControllerAI) {
-				newCard = card.holder.controller.medic(card, card.holder.grave)
+			if (card.holder.controller instanceof ControllerOponent) {
+				newCard = await new Promise((resolve) => {
+					const handleMessage = async (event) => {
+						const data = JSON.parse(event.data);
+
+						if (data.type === "medicDraw") {
+							const drawnCard = player_op.grave.cards.filter(c => c.isUnit())[data.index]
+							if (drawnCard) {
+								socket.removeEventListener('message', handleMessage);
+								resolve(drawnCard);
+							}
+						}
+					}
+					socket.addEventListener('message', handleMessage);
+				});
 			} else {
 				Carousel.curr.exit();
 				await ui.queueCarousel(card.holder.grave, 1, (c,i) => newCard = c.cards[i], c => c.isUnit(), false, false);
@@ -316,12 +337,11 @@ var ability_dict = {
 			let hand = board.getRow(card, "hand", card.holder);
 			let deck = board.getRow(card, "deck", card.holder);
 			if (card.holder.controller instanceof ControllerOponent) {
-				// Wait for the opponent to choose which cards to discard and play
+				// Wait for the opponent to choose which cards to discard and which to get
 				await new Promise((resolve) => {
 					let flag = 0;
 					const handleMessage = async (event) => {
 						const data = JSON.parse(event.data);
-						console.log("flag = " + flag)
 						if (data.type === "removeCardHand") {
 							const card = hand.cards[data.index];
 							hand.removeCard(card);
