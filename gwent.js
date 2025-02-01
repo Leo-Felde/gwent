@@ -627,7 +627,7 @@ class Row extends CardContainer {
 		this.elem_special = elem.getElementsByClassName("row-special")[0];
 		this.special = null;
 		this.total = 0;
-		this.effects = {weather:false, bond: {}, morale: 0, horn: 0, mardroeme: 0};
+		this.effects = { weather:false, bond: {}, morale: 0, horn: 0, mardroeme: 0 };
 		this.elem.addEventListener("click", () => ui.selectRow(this), true);
 		this.elem_special.addEventListener("click", () => ui.selectRow(this), false, true);
 	}
@@ -681,7 +681,7 @@ class Row extends CardContainer {
 			switch (x) {
 				case "morale":
 				case "horn":
-				case "mardroeme": this.effects[x]+= activate ? 1 : -1; break;
+				case "mardroeme": this.effects[x] += activate ? 1 : -1; break;
 				case "bond": 
 					if (!this.effects.bond[card.id()])
 						this.effects.bond[card.id()] = 0;
@@ -1017,7 +1017,7 @@ class Game {
 		}
 	}
 	
-	// Sets initializes player abilities, player hands and redraw
+	// Initializes player abilities, hands and waits for cointoss
 	async startGame() {
 		this.currPlayer = player_me;
 		this.initPlayers(player_me, player_op);
@@ -1093,7 +1093,7 @@ class Game {
 		await this.runEffects(this.turnStart);
 		if (!this.currPlayer.opponent().passed){
 			this.currPlayer = this.currPlayer.opponent();
-			await ui.notification(this.currPlayer.tag + "-turn", 1200);
+			ui.notification(this.currPlayer.tag + "-turn", 1200);
 		}
 
 		ui.enablePlayer(this.currPlayer === player_me);
@@ -1195,7 +1195,8 @@ class Game {
 	
 	// Executes effects in list. If effect returns true, effect is removed.
 	async runEffects(effects){
-		for (let i=effects.length-1; i>=0; --i){
+		console.log("runEffects")
+		for (let i = effects.length - 1; i >= 0; --i){
 			let effect = effects[i];
 			if (await effect())
 				effects.splice(i,1)
@@ -1536,13 +1537,15 @@ class UI {
 	
 	// Displayed a timed notification to the client
 	async notification(name, duration){
+		console.log(`display notification ${name} for ${duration}ms`)
 		if (!duration)
 			duration = 1200;
-		duration = Math.max(400, duration);
+
+		duration = Math.max(800, duration);
 		const fadeSpeed = 150;
 		this.notif_elem.children[0].id = "notif-" + name;
-		fadeIn(this.notif_elem, fadeSpeed);
-		fadeOut(this.notif_elem, fadeSpeed, duration - fadeSpeed);
+		await fadeIn(this.notif_elem, fadeSpeed);
+		await fadeOut(this.notif_elem, fadeSpeed, duration - fadeSpeed);
 		await sleep(duration);
 	}
 	
