@@ -8,10 +8,6 @@ let amReady = false;
 let oponentReady = false;
 let playerId = null;
 
-socket.onopen = () => {
-    console.log('Connected to the server');
-};
-
 socket.onmessage = async(event) => {
     const data = JSON.parse(event.data);
 
@@ -25,11 +21,21 @@ socket.onmessage = async(event) => {
 				startButtonElem.classList.remove("disabled");
 				break;
 			case "sessionUnready":
+				console.log("---------------------")
+				console.log("Oponent left the game")
+				await ui.notification("win-opleft", 1200);
+
 				startButtonElem.classList.add("disabled");
+				game.returnToCustomization();
+				if (joinedSessionId) {
+					cancelSession();
+				}
+				break;
 
 			// Pre-game - Handles initial Oponent configuration and starting parameters
 			case "ready":
 				console.log("Oponent is ready");
+				oponentReadyElem.classList.remove("disabled");
 				if (amReady) {
 					player_op = new Player(1, `Player ${playerId > 1 ? '1' : '2'}`, data.deck);
 					document.getElementById("deck-customization").classList.add("hide");
@@ -46,6 +52,7 @@ socket.onmessage = async(event) => {
 			case "unReady":
 				console.log("Oponent changed his mind");
 				oponentReady = false;
+				oponentReadyElem.classList.add("disabled");
 				break;
 			
 			// Pre-game - Initializes Oponent's updated Hand and Deck
@@ -61,6 +68,7 @@ socket.onmessage = async(event) => {
 			case 'start':
 				console.log("---------------------")
 				console.log("Match start")
+				
 				game.startRound()
 				tocar("game_start", false);
 				somCarta();
@@ -105,10 +113,6 @@ socket.onmessage = async(event) => {
 				player_op.activateLeader()
 				break;
 		}
-};
-
-socket.onclose = () => {
-    console.log('Disconnected from the server');
 };
 
 function fillCardElements (cards, player) {
@@ -1046,6 +1050,7 @@ class Game {
 	
 	// Initializes player abilities, hands and waits for cointoss
 	async startGame() {
+		isOponentReadyElem.classList.add("hidden");
 		ui.toggleMusic_elem.style.left = "26vw"
 
 		ui.toggleMusic_elem.classList.remove("music-customization");
@@ -1066,8 +1071,6 @@ class Game {
 					if (data.type === "scoiataelStart") {
 						console.log(data)
 						const player = data.first === "me" ? player_op : player_me;
-						console.log("scoiatel decidiu que " + data.first === "me" ? 'ele vai primeiro' : 'eu vou primeiro')
-						console.log(`data.first = ${data.first}`)
 						game.firstPlayer = player;
 						game.currPlayer = player;
 						socket.removeEventListener('message', handleMessage);
@@ -1202,6 +1205,7 @@ class Game {
 	
 	// Sets up and displays the end-game screen
 	async endGame() {
+		startButtonElem.classList.remove("ready");
 		let endScreen = document.getElementById("end-screen");
 		let rows = endScreen.getElementsByTagName("tr");
 		rows[1].children[0].innerHTML = player_me.name;
@@ -1217,16 +1221,20 @@ class Game {
 		}
 		
 		endScreen.children[0].className = "";
+		console.log("---------------------")
 		if (player_op.health <= 0 && player_me.health <= 0) {
 			tocar("");
 			endScreen.getElementsByTagName("p")[0].classList.remove("hide");
 			endScreen.children[0].classList.add("end-draw");
+			console.log("Game over || Draw")
 		} else if (player_op.health === 0){
 			tocar("game_win", true);
 			endScreen.children[0].classList.add("end-win");
+			console.log("Game over || Victory")
 		} else {
 			endScreen.children[0].classList.add("end-lose");
 			endScreen.children[0].classList.add("end-lose");
+			console.log("Game over || Victory")
 		}
 		
 		fadeIn(endScreen, 300);
@@ -1235,7 +1243,15 @@ class Game {
 	
 	// Returns the client to the deck customization screen
 	returnToCustomization(){
+		socket.send(JSON.stringify({ type: "unReady" }));
+		amReady = false;
+		oponentReady = false;
+		startButtonElem.classList.remove("ready");
+		
+		isOponentReadyElem.classList.remove("hidden");
+		isOponentReadyElem.classList.add("disabled");
 		ui.toggleMusic_elem.style.left = "20.5vw"
+
 		this.reset();
 		player_me.reset();
 		player_op.reset();
@@ -1514,8 +1530,6 @@ class UI {
 				'onStateChange': initButton
 			}
 		});
-		console.log("initYouTube")
-		console.log(this.youtube)
 
 		function initButton() {
 			if (ui.ytActive !== undefined)
@@ -1676,36 +1690,6 @@ class UI {
 			duration = 1200;
 
 		duration = Math.max(800, duration);
-
-		var guia1 = {
-			"notif-nilfgaard-wins-draws": "Nilfgaard wins draws",
-			"notif-op-white-flame": "The opponent's leader cancel your opponent's Leader Ability",
-			"notif-op-leader": "Opponent uses leader",
-			"notif-me-first": "You will go first",
-			"notif-op-first": "Your opponent will go first",
-			"notif-me-coin": "You will go first",
-			"notif-op-coin": "Your opponent will go first",
-			"notif-round-start": "Round Start",
-			"notif-me-pass": "Round passed",
-			"notif-op-pass": "Your opponent has passed",
-			"notif-win-round": "You won the round!",
-			"notif-lose-round": "Your opponent won the round",
-			"notif-draw-round": "The round ended in a draw",
-			"notif-me-turn": "Your turn!",
-			"notif-op-turn": "Opponent's turn",
-			"notif-north": "Northern Realms faction ability triggered - North draws an additional card.",
-			"notif-monsters": "Monsters faction ability triggered - one randomly-chosen Monster Unit Card stays on the board",
-			"notif-scoiatael": "Opponent used the Scoia'tael faction perk to go first.",
-			"notif-skellige-op": "Opponent Skellige Ability Triggered!",
-			"notif-skellige-me": "Skellige Ability Triggered!",
-			"notif-witcher_universe": "Witcher Universe used its faction ability and skipped a turn",
-			"notif-toussaint": "Toussaint faction ability triggered - Toussaint draws an additional card.",
-			"notif-toussaint-decoy-cancelled": "Toussaint Leader ability used - Decoy ability cancelled for the rest of the round.",
-			"notif-lyria_rivia": "Lyria & Rivia ability used - Morale Boost effect applied to a row.",
-			"notif-meve_white_queen": "Lyria & Rivia leader allows both players to restore 2 units when using the medic ability.",
-            "notif-north-scorch-cancelled": "Northern Realms Leader ability used - Scorch ability cancelled for the rest of the round.",
-            "notif-zerrikania": "Zerrikania ability used - Unit restored from discard pile.",
-		}
 		var guia2 = {
 			"me-pass" : "pass",
 			"win-round" : "round_win",
@@ -1714,7 +1698,9 @@ class UI {
 			"op-turn" : "turn_op",
 			"op-leader" : "turn_op",
 			"op-white-flame" : "turn_op",
-			"nilfgaard-wins-draws" : "turn_op"
+			"nilfgaard-wins-draws" : "turn_op",
+			"sv-err": "server_error",
+			"win-opleft" : "oponent_left"
 		}
 		var temSom = new Array();
 		for (var x in guia2) temSom[temSom.length] = x;
@@ -1724,8 +1710,8 @@ class UI {
 		const fadeSpeed = 150;
 		this.notif_elem.children[0].id = "notif-" + name;
 		await fadeIn(this.notif_elem, fadeSpeed);
-		await fadeOut(this.notif_elem, fadeSpeed, duration - fadeSpeed);
 		await sleep(duration);
+		await fadeOut(this.notif_elem, fadeSpeed, duration - fadeSpeed);
 	}
 	
 	// Displays a cancellable Carousel for a single card 
@@ -1937,22 +1923,18 @@ class Carousel {
 		const resp = await this.action(this.container, this.indices[this.index]);
 		if (actionString === "(c, i) => wrapper.card=c.cards[i]" || actionString === "(c,i) => newCard = c.cards[i]") {
 			setTimeout(() => {
-				console.log("Send socket message 'medicDraw'")
 				socket.send(JSON.stringify({ type: "medicDraw", card: resp.filename }));
 			}, 1000);
 		} else if (actionString.includes("board.toWeather")) {
 			setTimeout(() => {
-				console.log("Send socket message 'weatherDraw'")
 				socket.send(JSON.stringify({ type: "weatherDraw", card: resp.filename }));
 			}, 1000);
 		} else if (actionString.includes("board.toGrave")) {
 			setTimeout(() => {
-				console.log("Send socket message 'removeCardHand'")
 				socket.send(JSON.stringify({ type: "removeCardHand", index: this.index }));
 			}, 1000);
 		} else if (actionString.includes("board.toHand")) {
 			setTimeout(() => {
-				console.log("Send socket message 'addCardHand'")
 				socket.send(JSON.stringify({ type: "addCardHand", index: this.index  }));
 			}, 1000);
 		}
@@ -2708,6 +2690,8 @@ function iniciarMusica() {
 var ui = new UI();
 
 const startButtonElem = document.getElementById("start-game");
+const oponentReadyElem = document.getElementById("oponent-ready");
+const isOponentReadyElem = document.getElementById("oponent-ready");
 
 var board = new Board();
 var weather = new Weather();
