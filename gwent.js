@@ -71,6 +71,10 @@ socket.onmessage = async(event) => {
 			case "unReady":
 				oponentReady = false;
 				oponentReadyElem.classList.add("disabled");
+				if (amReady) {
+					readyButtonElem.classList.remove("ready");
+					customizationElem.classList.remove("noclick");
+				}
 				break;
 			
 			// Initializes Oponent's updated Hand and Deck
