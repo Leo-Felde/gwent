@@ -62,7 +62,7 @@ div.abs {
 	position:absolute;
 	height:auto;
 	font-size: 20px;
-	color: #FFF;
+	color: #DDD;
 	z-index: 3000;
 	text-align: center;
 	font-weight: bold;
@@ -133,6 +133,42 @@ html {
 	color: goldenrod;
 	text-shadow: 0 0 2vw #000;
 	z-index: 86;
+}
+
+#oponent-ready {
+  position: absolute;
+  top: 45.6vw;
+  left: 54.2vw;
+  height: 3vw;
+  font-size: 3vw;
+  text-shadow: 0 0 2vw #000;
+  z-index: 86;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+#oponent-ready img {
+  width: 42px;
+  height: auto;
+}
+
+#oponent-ready span {
+  color: #DDD;
+  font-size: 0.8rem;
+  margin-top: 5px;
+}
+
+/* Disabled state */
+#oponent-ready.disabled {
+  filter: grayscale(100%);
+  opacity: 0.7;
+	background-color: transparent !important;
+}
+
+#oponent-ready.disabled span {
+  visibility: hidden;
 }
 
 .music-customization {
@@ -256,6 +292,22 @@ html {
 
 #notif-win-round::after {
 	content: "You won the round!";
+}
+
+#notif-win-opleft {
+	background-image: url(img/icons/notif_win_round.png);
+}
+
+#notif-win-opleft::after {
+	content: "Your oponent left the game";
+}
+
+#notif-sv-err {
+	background-image: url(img/icons/notif_lose_round.png);
+}
+
+#notif-sv-err::after {
+	content: "Lost connection to the server";
 }
 
 #notif-lose-round {
@@ -403,7 +455,7 @@ html {
 	color: tan;
 	text-align: center;
 	pointer-events: none;
-	border: .1vw solid #ffffff57;
+	border: .1vw solid #DDDfff57;
 	border-width: .1vw 0;
 }
 
@@ -538,7 +590,7 @@ html {
 	line-height: 250%;
 	background-color: rgba(10, 10, 10, .95);
 	text-align: center;
-	box-shadow: 0 0 1vw #ffffff54;
+	box-shadow: 0 0 1vw #DDDfff54;
 }
 
 #popup {
@@ -887,7 +939,7 @@ html {
 	width: 12%;
 	margin-bottom: -12%;
 	color: #000;
-	text-shadow: 0 0 5px #fff;
+	text-shadow: 0 0 5px #DDD;
 	font-size: 2.3vw;
 	font-weight: 700;
 	background-size: contain;
@@ -1069,7 +1121,7 @@ html {
 	margin-bottom: -12.65%;
 	font-size: 1.8vw;
 	color: #000;
-	text-shadow: 0 0 5px #fff;
+	text-shadow: 0 0 5px #DDD;
 }
 
 .row-special {
@@ -1275,7 +1327,7 @@ html {
 .deck-options {
 	position: absolute;
 	font-size: 1vw;
-	color: #fff;
+	color: #DDD;
 	top: 15%;
 }
 
@@ -1450,7 +1502,7 @@ html {
 }
 
 .card-array .hero .card-large-power .card-large-power-strength {
-	color: #fff;
+	color: #DDD;
 }
 
 .card-array .card-lg .card-large-row {
@@ -1577,7 +1629,7 @@ html {
 }
 
 .card-preview .hero .card-large-power .card-large-power-strength {
-	color: #fff;
+	color: #DDD;
 }
 
 .card-preview .card-lg .card-large-row {
@@ -1760,7 +1812,7 @@ html {
 }
 
 #carousel .hero .card-large-power .card-large-power-strength {
-	color: #fff;
+	color: #DDD;
 }
 
 #carousel .card-lg .card-large-row {
@@ -1944,16 +1996,36 @@ html {
 	background-image: url(img/icons/deck_stats_hero.png);
 }
 
-/* #oponent-ready {
+#no-server {
 	position: absolute;
-	top: 83%;
-	left: 46.65%;
-	width: 6%;
-	height: 3%;
-	font-size: 0.98vw;
-	white-space: nowrap;
-	color: rgb(24, 168, 60);
-} */
+	z-index: 87;
+	top: 95.5%;
+  left: 43.8%;
+	max-height: 40px !important;
+	display: flex;
+	align-items: center;
+	background-color: #d32f2f65;
+	color: #DDD;
+	padding: 10px 20px;
+	padding-left: 0px;
+	border-radius: 5px;
+	font-family: Arial, sans-serif;
+	font-size: 16px;
+	max-width: 230px;
+	overflow: hidden;
+}
+#no-server-icon {
+	flex: 0 0 40px;
+	width: 40px;
+	height: 40px;
+	background-color: #d32f2f65;
+	background-image: url(img/icons/no-server.png);
+	background-repeat: no-repeat;
+	background-position: center;
+	background-size: 28px;
+	margin-right: 15px;
+}
+
 
 #create-game {
 	position: absolute;
@@ -1981,7 +2053,7 @@ html {
 	height: 3%;
 	font-size: 0.98vw;
 	white-space: nowrap;
-	color: white;
+	color: #DDD;
 	background-color: rgb(20,20,20);
 	box-shadow: 0px 3px 5px 0px rgba(0, 0, 0, 0.4);
 	border: 0.1vw ridge rgb(30,30,30);
@@ -2001,7 +2073,7 @@ html {
 	height: 3%;
 	font-size: 0.98vw;
 	white-space: nowrap;
-	color: white;
+	color: #DDD;
 	background-color: rgb(20,20,20);
 	box-shadow: 0px 3px 5px 0px rgba(0, 0, 0, 0.4);
 	border: 0.1vw ridge rgb(30,30,30);
@@ -2015,7 +2087,7 @@ html {
 	height: 3%;
 	font-size: 0.98vw;
 	white-space: nowrap;
-	color: white;
+	color: #DDD;
 	background-color: rgb(20,20,20);
 	border: 0.1vw ridge rgb(30,30,30);
 	box-shadow: 0px 3px 5px 0px rgba(0, 0, 0, 0.4);
@@ -2029,7 +2101,7 @@ html {
 	height: 3%;
 	font-size: 0.98vw;
 	white-space: nowrap;
-	color: white;
+	color: #DDD;
 	background-color: rgb(20,20,20);
 	box-shadow: 0px 3px 5px 0px rgba(0, 0, 0, 0.4);
 	border: 0.1vw ridge rgb(30,30,30);
@@ -2043,7 +2115,7 @@ html {
 
 #join-input label {
 	font-size: 1rem;
-	color: white;
+	color: #DDD;
 }
 
 #join-input input {
@@ -2062,7 +2134,7 @@ html {
 }
 
 .copy-btn {
-	color: white;
+	color: #DDD;
 	background: transparent;
 	border: none;
 	font-size: 1rem;
@@ -2075,7 +2147,7 @@ html {
 	left: 50%;
 	transform: translateX(-50%);
 	background-color: black;
-	color: white;
+	color: #DDD;
 	padding: 5px 10px;
 	border-radius: 5px;
 	font-size: 14px;
@@ -2091,7 +2163,7 @@ html {
 
 .start-game_class {
 	white-space: nowrap;
-	color: #fff;
+	color: #DDD;
 	background-color: rgb(20, 20, 20);
 	border: .1vw ridge rgb(30, 30, 30);
 }
@@ -2153,11 +2225,11 @@ html {
 	font-size: 1vw;
 	font-weight: 700;
 	color: #000;
-	text-shadow: 0 0 .1vw #fff;
+	text-shadow: 0 0 .1vw #DDD;
 }
 
 .hero>div:nth-child(1)>div {
-	color: #fff;
+	color: #DDD;
 	text-shadow: 0 0 .1vw #000;
 }
 
@@ -2233,12 +2305,13 @@ html {
 }
 .hidden { visibility: hidden; }
 .disabled {
-	background: rgb(51, 51, 51) !important;
+	background-color: rgb(17, 17, 17) !important;
+	color: #8e8e8e !important;
 	pointer-events: none;
 	cursor: url('img/icons/cursor.png'), auto;
  }
  .disabled:hover {
-	box-shadow: 0px 3px 5px 0px rgba(0, 0, 0, 0.4) !important;
+	box-shadow: 0px 3px 5px 0px rgb(21, 21, 21) !important;
 	/* border-bottom-width: 2px; */
   transform: translateY(0px) !important; 
  }
