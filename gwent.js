@@ -8,6 +8,11 @@ let amReady = false;
 let oponentReady = false;
 let playerId = null;
 
+const startButtonElem = document.getElementById("start-game");
+const oponentReadyElem = document.getElementById("oponent-ready");
+const isOponentReadyElem = document.getElementById("oponent-ready");
+const passButton = document.getElementById("pass-button");
+
 socket.onmessage = async(event) => {
     const data = JSON.parse(event.data);
 
@@ -1066,7 +1071,6 @@ class Game {
 					const data = JSON.parse(event.data);
 
 					if (data.type === "scoiataelStart") {
-						console.log(data)
 						const player = data.first === "me" ? player_op : player_me;
 						game.firstPlayer = player;
 						game.currPlayer = player;
@@ -1098,8 +1102,15 @@ class Game {
 				const data = JSON.parse(event.data);
 
 				if (data.type === 'coinToss') {
-					const player = data.player === playerId ? player_me : player_op;
-					
+					let player;
+					if (data.player === playerId) {
+						player = player_me;
+						passButton.classList.remove("hidden");
+						document.addEventListener('keydown', handleKeyDown);
+						document.addEventListener('keyup', handleKeyUp);
+					} else {
+						player = player_op;
+					}
 					game.firstPlayer = player;
 					game.currPlayer = player;
 					
@@ -1151,7 +1162,17 @@ class Game {
 			this.currPlayer = this.currPlayer.opponent();
 			ui.notification(this.currPlayer.tag + "-turn", 1200);
 		}
-		ui.enablePlayer(this.currPlayer === player_me);
+		if (this.currPlayer === player_me) {
+			passButton.classList.remove("hidden");
+			document.addEventListener('keydown', handleKeyDown);
+			document.addEventListener('keyup', handleKeyUp);
+			ui.enablePlayer(true);
+		} else {
+			passButton.classList.add("hidden");
+			document.removeEventListener('keydown', handleKeyDown);
+			document.removeEventListener('keyup', handleKeyUp);
+		}
+		
 		this.currPlayer.startTurn();
 	}
 	
@@ -1492,7 +1513,7 @@ class UI {
 		this.preview = document.getElementsByClassName("card-preview")[0];
 		this.previewCard = null;
 		this.lastRow = null;
-		document.getElementById("pass-button").addEventListener("click", () => {
+		passButton.addEventListener("click", () => {
 			socket.send(JSON.stringify({ type: "pass", player: playerId }));
 			player_me.passRound();
 		});
@@ -2676,10 +2697,6 @@ function iniciarMusica() {
 
 var ui = new UI();
 
-const startButtonElem = document.getElementById("start-game");
-const oponentReadyElem = document.getElementById("oponent-ready");
-const isOponentReadyElem = document.getElementById("oponent-ready");
-
 var board = new Board();
 var weather = new Weather();
 var game = new Game();
@@ -2722,4 +2739,37 @@ window.onload = function() {
 		inicio();
     });
 	isLoaded = true;
+}
+
+let spacebarPressTimer;
+let isSpacebarPressed = false;
+
+function handleKeyDown(event) {
+    if (event.code === 'Space' && !isSpacebarPressed) {
+        isSpacebarPressed = true;
+        spacebarPressTimer = setTimeout(() => {
+					document.removeEventListener('keydown', handleKeyDown);
+					document.removeEventListener('keyup', handleKeyUp);
+					passButton.classList.remove("loading");
+          player_me.passRound();
+					socket.send(JSON.stringify({ type: "pass", player: playerId }));
+        }, 2 * 1000); 
+        startLoadingEffect();
+    }
+}
+
+function handleKeyUp(event) {
+    if (event.code === 'Space') {
+        isSpacebarPressed = false;
+        clearTimeout(spacebarPressTimer);
+        stopLoadingEffect();
+    }
+}
+
+function startLoadingEffect() {
+	passButton.classList.add('loading');
+}
+
+function stopLoadingEffect() {
+	passButton.classList.remove('loading');
 }
