@@ -13,6 +13,7 @@ const oponentReadyElem = document.getElementById("oponent-ready");
 const isOponentReadyElem = document.getElementById("oponent-ready");
 const passButton = document.getElementById("pass-button");
 const customizationElem = document.getElementById("deck-customization");
+const gameStartControlsElem = document.getElementById("session-start-control");
 
 socket.onmessage = async(event) => {
     const data = JSON.parse(event.data);
@@ -52,16 +53,16 @@ socket.onmessage = async(event) => {
 			// Pre-game - Handles initial Oponent configuration and starting parameters
 			case "ready":
 				console.log("Oponent is ready");
+				player_op = new Player(1, "Oponent", data.deck);
 				if (amReady) {
-					player_op = new Player(1, `Player ${playerId > 1 ? '1' : '2'}`, data.deck);
 					customizationElem.classList.add("hide");
+					gameStartControlsElem.classList.add("hide");
 		
 					game.startGame();
 					return
 				} else {
 					// document.getElementById("oponent-ready").classList.remove("hide");
 					oponentReadyElem.classList.remove("disabled");
-					player_op = new Player(1, `Player ${playerId > 1 ? '1' : '2'}`, data.deck);
 					oponentReady = true;
 				}
 				break;
@@ -1069,6 +1070,7 @@ class Game {
 	
 	// Initializes player abilities, hands and waits for cointoss
 	async startGame() {
+		gameStartControlsElem.classList.add("hide");
 		isOponentReadyElem.classList.add("hidden");
 		ui.toggleMusic_elem.style.left = "26vw"
 
@@ -1291,6 +1293,7 @@ class Game {
 		ui.toggleMusic_elem.classList.add("music-customization");
 		this.endScreen.classList.add("hide");
 		customizationElem.classList.remove("hide");
+		gameStartControlsElem.classList.remove("hide");
 	}
 	
 	// Restarts the last game with the same decks
@@ -2326,7 +2329,7 @@ class DeckMaker {
 			cards: this.deck.filter(x => x.count > 0)
 		};
 
-		player_me = new Player(0, `Player ${playerId}`, me_deck );
+		player_me = new Player(0, "you", me_deck );
 		socket.send(JSON.stringify({ type: "ready", deck: me_deck }));
 		amReady = true;
 		if (oponentReady) {

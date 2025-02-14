@@ -296,11 +296,13 @@
 	<input type="text" id="session-input" maxlength="4" name="session-input" oninput="let p=this.selectionStart;this.value=this.value.toUpperCase();this.setSelectionRange(p, p);">
 </span>
 <button id="confirm-join">Join</button>
-<button id="start-game">Ready</button>
-<button id="cancel-game">Cancel</button>
-<div id="session-id">
-	<button class="copy-btn">Session: </button>
-	<span class="tooltip" id="tooltip">Copied to clipboard</span>
+<div id="session-start-control">
+	<button id="start-game">Ready</button>
+	<button id="cancel-game">Cancel</button>
+	<div id="session-id">
+		<button class="copy-btn">Session: </button>
+		<span class="tooltip" id="tooltip">Copied to clipboard</span>
+	</div>
 </div>
 
 
@@ -310,8 +312,9 @@
 </div>
 <div id="toggle-music" class="center music-customization" style="display:none">♫</div>
 <div id="oponent-ready" class="hidden disabled">
+	<label id="oponent-name"> Oponent </label>
   <img src="img/icons/deck_shield_realms.png" alt="Oponent Ready Icon">
-  <span>Oponent Ready</span>
+  <span>Ready</span>
 </div>
 
 <script type="text/javascript" src="cards.js"></script>

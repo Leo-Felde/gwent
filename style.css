@@ -149,6 +149,12 @@ html {
   justify-content: center;
 }
 
+#oponent-ready label {
+  color: #DDD;
+  font-size: 0.9rem;
+  margin-bottom: 5px;
+}
+
 #oponent-ready img {
   width: 42px;
   height: auto;
@@ -2152,9 +2158,9 @@ html {
 }
 
 #session-id{
-	position: relative;
+	position: absolute;
 	z-index: 87;
-	top: 100%;
+	top: 102.5%;
 	left: 47.2%;
 	color: #fefefe;
 	font-weight: bold;
