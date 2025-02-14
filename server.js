@@ -125,6 +125,10 @@ wss.on('connection', (ws) => {
       if (session.players[0] === ws) {
         // If the creator disconnects, delete the session
         console.log(`# Deleting session ${ws.sessionCode} because the creator left`);
+        if (session.players.length > 1) {
+          session.players[1].send(JSON.stringify({ type: 'unReady' }));
+          session.players[1].send(JSON.stringify({ type: 'sessionUnready' }));
+        }
         delete sessions[ws.sessionCode];
       } else {
         // If a non-creator disconnects, remove them from the session and notify the creator
