@@ -748,6 +748,15 @@ html {
 	text-shadow: 0 0 1vw #6d5210;
 }
 
+@keyframes loading {
+	0% {
+			background-position: 100% 0;
+	}
+	100% {
+			background-position: 0 0;
+	}
+}
+
 #end-screen button:hover {
 	box-shadow: 0 0 2vw #6d5210;
 }
@@ -1064,15 +1073,28 @@ html {
 }
 
 #pass-button {
-	top: 82%;
-	left: 63%;
-	width: 20%;
-	height: 4%;
-	font-size: 2vw;
-	font-weight: 700;
-	border: .1vw solid goldenrod;
-	border-radius: .5vw;
-	background-color: rgba(20, 20, 20, .9);
+	top: 56.5%;
+  left: 25%;
+  width: 162px;
+  height: 40px;
+  background-color: #0f0f0f;
+  font-size: 1rem;
+  font-weight: lighter;
+}
+
+.key-hint, .key-hint-accent {
+	padding-right: 4px;
+}
+
+.key-hint {
+	font-weight: bold;
+	color: #e2e2e2;
+}
+
+#pass-button.loading {
+	background: linear-gradient(to right, #f3f3f359, #0f0f0f, #0f0f0f);
+	background-size: 200% 100%;
+	animation: loading 2s linear forwards;
 }
 
 .field {
