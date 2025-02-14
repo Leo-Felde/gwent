@@ -8,8 +8,6 @@ const btnJoinElem = document.getElementById("join-game");
 btnJoinElem.addEventListener("click", () => joinGame());
 btnJoinElem.classList.add("disabled");
 
-const isOponentReady = document.getElementById("oponent-ready");
-
 btnReadyElem = document.getElementById("start-game");
 btnReadyElem.classList.add("hidden");
 
@@ -30,14 +28,11 @@ sessionIdDiv.classList.add("hidden");
 
 inputGroup.classList.add("hidden");
 
-const serverOk = false
 socket.onopen = () => {
   console.log('Connected to the server');
   noServerWarningElement.classList.add("hidden");
   btnCreateElem.classList.remove("disabled");
   btnJoinElem.classList.remove("disabled");
-
-  serverOk = true;
 };
 
 socket.onclose = () => {
@@ -54,8 +49,6 @@ socket.onclose = () => {
 
   btnConfirmJoin.classList.add("hidden");
   inputGroup.classList.add("hidden");
-  
-  serverOk = false;
 };
 
 var createdSessionId = null;
@@ -68,8 +61,6 @@ function createGame () {
 
   btnReadyElem.classList.remove("hidden");
   btnCancelElem.classList.remove("hidden");
-  isOponentReady.classList.remove("hidden");
-
   socket.send(JSON.stringify({ type: "createSession" }));
 }
 
@@ -93,7 +84,6 @@ function joinGame() {
         btnReadyElem.classList.remove("hidden");
         inputGroup.classList.add("hidden");
         btnConfirmJoin.classList.add("hidden");
-        isOponentReady.classList.remove("hidden");
         joinedSessionId = sessionCode;
       } else {
         alert("Invalid session");
@@ -128,7 +118,6 @@ function cancelSession () {
 
   btnCancelElem.classList.add("hidden");
   sessionIdDiv.classList.add("hidden");
-  isOponentReady.classList.add("hidden");
   btnConfirmJoin.classList.add("hidden");
   inputGroup.classList.add("hidden");
 
