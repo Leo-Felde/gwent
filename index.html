@@ -5,9 +5,9 @@
 <head>
 	<title>Gwent Classic from The Widtcher 3: Wild Hunt</title>
 	<meta charset="utf-8" />
-	<meta name="author" content="Arun Sundaram" />
-	<meta name="description" content="Play the original Gwent minigame from The Witcher 3 in your browser! Includes cards from Hearts of Stone and Blood & Wine!" />
-	<meta name="keywords" content="arun, sundaram, programmer, gwent, tw3, witcher, card, game, gamedev, play" />
+	<meta name="author" content="Arun Sundaram, Leo-Felde" />
+	<meta name="description" content="Play the original Gwent minigame from The Witcher 3 against your friends in your browser!" />
+	<meta name="keywords" content="arun, sundaram, leo-felde, leonardo felde, programmer, gwent, tw3, witcher, card, game, gamedev, play, multiplayer, versus, pvp, online" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 	<link rel="stylesheet" type="text/css" href="style.css" />
 </head>
@@ -286,27 +286,31 @@
 		<p>Hero Cards</p>
 		<p>0</p>
 	</div>
-	<button id="create-game">Create Game</button>
-	<button id="join-game">Join Game</button>
-	<span id="join-input">
-		<label for="session-input">Session code</label><br>
-		<input type="text" id="session-input" maxlength="4" name="session-input" oninput="let p=this.selectionStart;this.value=this.value.toUpperCase();this.setSelectionRange(p, p);">
-	</span>
-	<button id="confirm-join">Join</button>
-	<button id="start-game">Ready</button>
-	<button id="cancel-game">Cancel</button>
-	<div id="session-id">
-		<button class="copy-btn">Session: </button>
-		<span class="tooltip" id="tooltip">Copied to clipboard</span>
-	</div>
 </section>
+
+
+<button id="create-game">Create Game</button>
+<button id="join-game">Join Game</button>
+<span id="join-input">
+	<label for="session-input">Session code</label><br>
+	<input type="text" id="session-input" maxlength="4" name="session-input" oninput="let p=this.selectionStart;this.value=this.value.toUpperCase();this.setSelectionRange(p, p);">
+</span>
+<button id="confirm-join">Join</button>
+<button id="start-game">Ready</button>
+<button id="cancel-game">Cancel</button>
+<div id="session-id">
+	<button class="copy-btn">Session: </button>
+	<span class="tooltip" id="tooltip">Copied to clipboard</span>
+</div>
+
+
 <div id="no-server">
 	<div id="no-server-icon"></div>
 	<span>No server connection</span>
 </div>
 <div id="toggle-music" class="center music-customization" style="display:none">♫</div>
-<div id="oponent-ready" class="disabled hidden">
-  <img src="img/icons/oponent-ready.png" alt="Oponent Ready Icon">
+<div id="oponent-ready" class="hidden disabled">
+  <img src="img/icons/deck_shield_realms.png" alt="Oponent Ready Icon">
   <span>Oponent Ready</span>
 </div>
 

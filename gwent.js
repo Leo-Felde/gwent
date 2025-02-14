@@ -8,10 +8,11 @@ let amReady = false;
 let oponentReady = false;
 let playerId = null;
 
-const startButtonElem = document.getElementById("start-game");
+const readyButtonElem = document.getElementById("start-game");
 const oponentReadyElem = document.getElementById("oponent-ready");
 const isOponentReadyElem = document.getElementById("oponent-ready");
 const passButton = document.getElementById("pass-button");
+const customizationElem = document.getElementById("deck-customization");
 
 socket.onmessage = async(event) => {
     const data = JSON.parse(event.data);
@@ -23,35 +24,51 @@ socket.onmessage = async(event) => {
 				break;
 			
 			case "sessionReady":
-				startButtonElem.classList.remove("disabled");
+				readyButtonElem.classList.remove("disabled");
+				isOponentReadyElem.classList.remove("hidden");
 				break;
 			case "sessionUnready":
-				console.log("---------------------")
-				console.log("Oponent left the game")
-				await ui.notification("win-opleft", 1200);
+				console.log("---------------------");
+				console.log("Oponent left the game");
+				isOponentReadyElem.classList.add("hidden");
 
-				startButtonElem.classList.add("disabled");
-				game.returnToCustomization();
-				if (joinedSessionId) {
-					cancelSession();
+				readyButtonElem.classList.add("disabled");
+				if (game.roundCound > 0) {
+					await ui.notification("win-opleft", 1200);
+
+					game.returnToCustomization();
+					if (joinedSessionId) {
+						cancelSession();
+					}
 				}
 				break;
 
+			// player joined your session
+			case "Join":
+				console.log("player joined your game");
+				oponentReadyElem.classList.remove("hidden");
+				break;
+			
 			// Pre-game - Handles initial Oponent configuration and starting parameters
 			case "ready":
 				console.log("Oponent is ready");
-				oponentReadyElem.classList.remove("disabled");
 				if (amReady) {
 					player_op = new Player(1, `Player ${playerId > 1 ? '1' : '2'}`, data.deck);
-					document.getElementById("deck-customization").classList.add("hide");
+					customizationElem.classList.add("hide");
 		
 					game.startGame();
 					return
 				} else {
 					// document.getElementById("oponent-ready").classList.remove("hide");
+					oponentReadyElem.classList.remove("disabled");
 					player_op = new Player(1, `Player ${playerId > 1 ? '1' : '2'}`, data.deck);
 					oponentReady = true;
 				}
+				break;
+
+			case "opChangeFaction":
+				console.log("oponent has changed his faction");
+				oponentReadyElem.querySelector("img").src = `img/icons/deck_shield_${data.faction}.png`
 				break;
 			
 			case "unReady":
@@ -70,9 +87,9 @@ socket.onmessage = async(event) => {
 				break;
 
 			// Game-start
-			case 'start':
-				console.log("---------------------")
-				console.log("Match start")
+			case "start":
+				console.log("---------------------");
+				console.log("Match start");
 				
 				game.startRound()
 				tocar("game_start", false);
@@ -1223,7 +1240,7 @@ class Game {
 	
 	// Sets up and displays the end-game screen
 	async endGame() {
-		startButtonElem.classList.remove("ready");
+		readyButtonElem.classList.remove("ready");
 		let endScreen = document.getElementById("end-screen");
 		let rows = endScreen.getElementsByTagName("tr");
 		rows[1].children[0].innerHTML = player_me.name;
@@ -1264,10 +1281,8 @@ class Game {
 		socket.send(JSON.stringify({ type: "unReady" }));
 		amReady = false;
 		oponentReady = false;
-		startButtonElem.classList.remove("ready");
+		readyButtonElem.classList.remove("ready");
 		
-		isOponentReadyElem.classList.remove("hidden");
-		isOponentReadyElem.classList.add("disabled");
 		ui.toggleMusic_elem.style.left = "20.5vw"
 
 		this.reset();
@@ -1275,7 +1290,7 @@ class Game {
 		player_op.reset();
 		ui.toggleMusic_elem.classList.add("music-customization");
 		this.endScreen.classList.add("hide");
-		document.getElementById("deck-customization").classList.remove("hide");
+		customizationElem.classList.remove("hide");
 	}
 	
 	// Restarts the last game with the same decks
@@ -2057,7 +2072,7 @@ class Popup {
 // Screen used to customize, import and export deck contents
 class DeckMaker {
 	constructor() {
-		this.elem = document.getElementById("deck-customization");
+		this.elem = customizationElem;
 		this.bank_elem = document.getElementById("card-bank");
 		this.deck_elem = document.getElementById("card-deck");
 		this.leader_elem = document.getElementById("card-leader");
@@ -2076,7 +2091,7 @@ class DeckMaker {
 		
 		document.getElementById("download-deck").addEventListener("click", () => this.downloadDeck(), false);
 		document.getElementById("add-file").addEventListener("change", () => this.uploadDeck(), false);
-		startButtonElem.addEventListener("click", () => this.startNewGame(), false);
+		readyButtonElem.addEventListener("click", () => this.startNewGame(), false);
 		somCarta();
 		
 		this.update();
@@ -2092,7 +2107,9 @@ class DeckMaker {
 				tocar("warning", false);
 				return false;
 			}
+			socket.send(JSON.stringify({ type: "opChangeFaction", faction: faction_name }));
 		}
+
 		this.elem.getElementsByTagName("h1")[0].innerHTML = factions[faction_name].name;
 		this.elem.getElementsByTagName("h1")[0].style.backgroundImage = iconURL("deck_shield_" + faction_name);
 		document.getElementById("faction-description").innerHTML = factions[faction_name].description;
@@ -2282,11 +2299,10 @@ class DeckMaker {
 	
 	// Verifies current deck, creates the players and their decks, then starts a new game
 	async startNewGame(){
-		if (!amReady) {
-			startButtonElem.classList.add("ready");
-		} else {
+		if (amReady) {
 			amReady = false;
-			startButtonElem.classList.remove("ready");
+			readyButtonElem.classList.remove("ready");
+			customizationElem.classList.remove("noclick");
 			socket.send(JSON.stringify({ type: "unReady" }));
 			return
 		}
@@ -2299,6 +2315,10 @@ class DeckMaker {
 			
 		if (warning != "")
 			return alert(warning);
+		else {
+			readyButtonElem.classList.add("ready");
+			customizationElem.classList.add("noclick");
+		} 
 
 		let me_deck = { 
 			faction: this.faction,
@@ -2307,7 +2327,6 @@ class DeckMaker {
 		};
 
 		player_me = new Player(0, `Player ${playerId}`, me_deck );
-		
 		socket.send(JSON.stringify({ type: "ready", deck: me_deck }));
 		amReady = true;
 		if (oponentReady) {
@@ -2390,6 +2409,7 @@ class DeckMaker {
 		if (warning && !confirm(warning + "\n\n\Continue importing deck?"))
 			return;
 		this.setFaction(deck.faction, true);
+		socket.send(JSON.stringify({ type: "opChangeFaction", faction: deck.faction }));
 		if (card_dict[deck.leader].row === "leader" && deck.faction === card_dict[deck.leader].deck){
 			this.leader = this.leaders.filter(c => c.index === deck.leader)[0];
 			this.leader_elem.children[1].style.backgroundImage = largeURL(this.leader.card.deck + "_" + this.leader.card.filename);
@@ -2732,7 +2752,7 @@ window.onload = function() {
 
 	document.getElementById("load_text").style.display = "none";
 	document.getElementById("button_start").style.display = "inline-block";
-	document.getElementById("deck-customization").style.display = "";
+	customizationElem.style.display = "";
 	document.getElementById("toggle-music").style.display = "";
 	document.getElementsByTagName("main")[0].style.display = "";
 	document.getElementById("button_start").addEventListener("click", function() {

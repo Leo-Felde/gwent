@@ -2050,8 +2050,9 @@ html {
 
 
 #create-game {
-	position: absolute;
-	top: 80%;
+	position: relative;
+	z-index: 87;
+	top: 95%;
 	left: 46.65%;
 	width: 7%;
 	height: 3%;
@@ -2064,12 +2065,14 @@ html {
 }
 
 .ready{
-	color: green !important;
+	color: #26b526 !important;
+	border: 1px solid #0e3907 !important;
 }
 
 #join-game {
 	position: absolute;
-	top: 84%;
+	z-index: 87;
+	top: 99%;
 	left: 46.65%;
 	width: 7%;
 	height: 3%;
@@ -2089,7 +2092,8 @@ html {
 
 #confirm-join {
 	position: absolute;
-	top: 80.5%;
+	z-index: 87;
+	top: 96%;
 	left: 53.35%;
 	width: 3%;
 	height: 3%;
@@ -2103,7 +2107,8 @@ html {
 
 #start-game {
 	position: absolute;
-	top: 80%;
+	z-index: 87;
+	top: 95%;
 	left: 47%;
 	width: 6%;
 	height: 3%;
@@ -2117,7 +2122,8 @@ html {
 
 #cancel-game {
 	position: absolute;
-	top: 84%;
+	z-index: 87;
+	top: 99%;
 	left: 47.5%;
 	width: 5%;
 	height: 3%;
@@ -2131,7 +2137,8 @@ html {
 
 #join-input {
 	position: absolute;
-	top: 79.5%;
+	z-index: 87;
+	top: 94.5%;
 	left: 47.65%;
 }
 
@@ -2145,8 +2152,9 @@ html {
 }
 
 #session-id{
-	position: absolute;
-	top: 88%;
+	position: relative;
+	z-index: 87;
+	top: 100%;
 	left: 47.2%;
 	color: #fefefe;
 	font-weight: bold;
@@ -2156,6 +2164,7 @@ html {
 }
 
 .copy-btn {
+	z-index: 87;
 	color: #DDD;
 	background: transparent;
 	border: none;
@@ -2164,19 +2173,21 @@ html {
 	position: relative;
 }
 .tooltip {
-	position: absolute;
-	bottom: 120%;
-	left: 50%;
-	transform: translateX(-50%);
-	background-color: black;
-	color: #DDD;
-	padding: 5px 10px;
-	border-radius: 5px;
-	font-size: 14px;
-	visibility: hidden;
-	opacity: 0;
-	transition: opacity 0.3s ease-in-out;
-	white-space: nowrap;
+	z-index: 88;
+  position: absolute;
+  bottom: 120%;
+  right: 88.9%;
+  transform: translateX(-50%);
+  background-color: #111;
+  color: #DDD;
+  padding: 5px 10px;
+  border-radius: 5px;
+  font-size: 14px;
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+  white-space: nowrap;
+  border: 1px solid #353535;
 }
 .tooltip.show {
 	visibility: visible;
