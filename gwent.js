@@ -24,10 +24,14 @@ socket.onmessage = async(event) => {
 				console.log("Welcome, your id is " + playerId);
 				break;
 			
+			// Oponent has joined and the session is ready
 			case "sessionReady":
 				readyButtonElem.classList.remove("disabled");
 				isOponentReadyElem.classList.remove("hidden");
+				// sends the oponent which faction you're playing with
+				socket.send(JSON.stringify({ type: "opChangeFaction", faction: dm.faction }));
 				break;
+			// Oponent has left and the session is no longer ready
 			case "sessionUnready":
 				console.log("---------------------");
 				console.log("Oponent left the game");
@@ -43,16 +47,9 @@ socket.onmessage = async(event) => {
 					}
 				}
 				break;
-
-			// player joined your session
-			case "Join":
-				console.log("player joined your game");
-				oponentReadyElem.classList.remove("hidden");
-				break;
 			
-			// Pre-game - Handles initial Oponent configuration and starting parameters
+			// Oponent is ready. If you are ready begin the game immediately
 			case "ready":
-				console.log("Oponent is ready");
 				player_op = new Player(1, "Oponent", data.deck);
 				if (amReady) {
 					customizationElem.classList.add("hide");
@@ -61,7 +58,6 @@ socket.onmessage = async(event) => {
 					game.startGame();
 					return
 				} else {
-					// document.getElementById("oponent-ready").classList.remove("hide");
 					oponentReadyElem.classList.remove("disabled");
 					oponentReady = true;
 				}
@@ -73,12 +69,11 @@ socket.onmessage = async(event) => {
 				break;
 			
 			case "unReady":
-				console.log("Oponent changed his mind");
 				oponentReady = false;
 				oponentReadyElem.classList.add("disabled");
 				break;
 			
-			// Pre-game - Initializes Oponent's updated Hand and Deck
+			// Initializes Oponent's updated Hand and Deck
 			case "initial_reDraw":
 				data.deck = fillCardElements(data.deck, player_op);
 				data.hand = fillCardElements(data.hand, player_op);
@@ -2746,7 +2741,7 @@ function inicio() {
 	for (var i = 0; i < classe.length; i++) classe[i].style.display = "none";
 	iniciou = true;
 	tocar("menu_opening", false);
-	openFullscreen();
+	// openFullscreen();
 	iniciarMusica();
 }
 
