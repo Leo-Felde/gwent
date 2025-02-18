@@ -98,20 +98,20 @@ socket.onmessage = async(event) => {
 
 			// Game - Oponent plays card
 			case "play":
-				const card = player_op.hand.cards.filter(c => c.filename === data.card.filename)[0];
+				const card = player_op.hand.cards.find(c => c.filename === data.card.filename);
 				console.log("Oponent plays card", card);
 
 				const splitRowName = data.row.split("-");
 				let row
 				if (splitRowName.length > 1) {
 					const targetRow = splitRowName[0] === "self" ? "target" : "self";
-					row = board.row.filter(r => r.elem_parent.id === `${targetRow}-${splitRowName[1]}`)[0];
+					row = board.row.find(r => r.elem_parent.id === `${targetRow}-${splitRowName[1]}`);
 				} else {
 					row = data.row
 				}
 				
 				if (data.card.filename === "decoy") {
-					const replacedCard = row.cards.filter(bc => bc.filename === data.target.filename)[0]
+					const replacedCard = row.cards.find(bc => bc.filename === data.target.filename);
 					if (!replacedCard) return
 					
 					board.moveTo(replacedCard, player_op.hand, row);
@@ -250,10 +250,6 @@ class Player {
 	
 	// Plays a card to a specific row
 	async playCardToRow(card, row){
-		// try {
-		// 	cartaNaLinha(row.elem.id, card);
-		// } catch (err) { }
-
 		await this.playCardAction(card, async () => await board.moveTo(card, row, this.hand));
 	}
 	
@@ -2096,7 +2092,7 @@ class DeckMaker {
 		this.faction = "realms";
 		this.setFaction(this.faction, true);
 		
-		let start_deck = JSON.parse(premade_deck[0]);
+		let start_deck = premade_deck.find(d => d.faction === this.faction);
 		start_deck.cards = start_deck.cards.map(c => ({index: c[0], count: c[1]}) );
 		this.setLeader(start_deck.leader);
 		this.makeBank(this.faction, start_deck.cards);
@@ -2122,6 +2118,7 @@ class DeckMaker {
 				tocar("warning", false);
 				return false;
 			}
+
 			socket.send(JSON.stringify({ type: "opChangeFaction", faction: faction_name }));
 		}
 
@@ -2145,7 +2142,7 @@ class DeckMaker {
 	
 	// Called when client selects a leader for their deck
 	setLeader(index){
-		this.leader = this.leaders.filter( l => l.index == index)[0];
+		this.leader = this.leaders.find( l => l.index == index);
 		this.leader_elem.children[1].style.backgroundImage = largeURL(this.leader.card.deck + "_" + this.leader.card.filename);
 	}
 	
@@ -2265,10 +2262,18 @@ class DeckMaker {
 		});
 		let index = container.cards.reduce((a,c,i) => c.filename === this.faction ? i : a, 0);
 		ui.queueCarousel(container, 1, (c,i) => {
-			let change = this.setFaction(c.cards[i].filename);
+			const card_faction_name = c.cards[i].filename;
+			let change = this.setFaction(card_faction_name);
 			if (!change)
 				return;
-			this.makeBank(c.cards[i].filename);
+			const faction_premade_deck = premade_deck.find(d => d.faction === card_faction_name)
+
+			if (faction_premade_deck) {
+				if (!faction_premade_deck?.cards[0].index)
+					faction_premade_deck.cards = faction_premade_deck.cards.map(c => ({index: c[0], count: c[1]}) );
+				this.makeBank(card_faction_name, faction_premade_deck.cards);
+			} else	
+				this.makeBank(card_faction_name);
 			this.update();
 		}, () => true, false, true);
 		Carousel.curr.index = index;
@@ -2355,7 +2360,7 @@ class DeckMaker {
 		let obj = {
 			faction: this.faction,
 			leader: this.leader.index, 
-			cards: this.deck.filter(x => x.count > 0).map(x => [x.index, x.count] )
+			cards: this.deck.filter(x => x.count > 0).map(x => [x.index, x.count])
 		};
 		return JSON.stringify(obj);
 	}
@@ -2426,7 +2431,7 @@ class DeckMaker {
 		this.setFaction(deck.faction, true);
 		socket.send(JSON.stringify({ type: "opChangeFaction", faction: deck.faction }));
 		if (card_dict[deck.leader].row === "leader" && deck.faction === card_dict[deck.leader].deck){
-			this.leader = this.leaders.filter(c => c.index === deck.leader)[0];
+			this.leader = this.leaders.find(c => c.index === deck.leader);
 			this.leader_elem.children[1].style.backgroundImage = largeURL(this.leader.card.deck + "_" + this.leader.card.filename);
 		}
 		this.makeBank(deck.faction, cards);
