@@ -542,7 +542,7 @@ html {
 #carousel .card-lg {
 	display: inline-block;
 	background-repeat: no-repeat;
-	background-size: contain;
+	background-size: cover;
 	background-position: top;
 	position: relative;
 }
